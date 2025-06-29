@@ -1,62 +1,19 @@
+// ARQUIVO FINAL SIMPLIFICADO: app/scanner.tsx
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
 import { useIsFocused } from "@react-navigation/native";
 import React, { useState } from "react";
-import {
-  StyleSheet,
-  Text,
-  View,
-  Button,
-  ActivityIndicator,
-  Alert,
-} from "react-native";
+import { StyleSheet, Text, View, Button } from "react-native";
 
 export default function ScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
-  const [scanned, setScanned] = useState(false);
   const router = useRouter();
-  const isFocused = useIsFocused();
+  const isFocused = useIsFocused(); // Garante que a câmera só rode quando a tela está visível
 
-  const handleBarCodeScanned = async ({ data }: { data: string }) => {
-    if (scanned) return; // Previne múltiplos scans
-    setScanned(true);
-
-    const PROXY_URL =
-      "https://jade-mermaid-cad199.netlify.app/.netlify/functions/proxy";
-
-    try {
-      const response = await fetch(`${PROXY_URL}?barcode=${data}`);
-
-      if (!response.ok) {
-        // Se a resposta do nosso próprio servidor falhar, avisa o usuário.
-        throw new Error(
-          `Servidor proxy respondeu com status: ${response.status}`
-        );
-      }
-
-      const json = await response.json();
-
-      if (json.status === 1 && json.product) {
-        const nomeDoProduto =
-          json.product.product_name ||
-          json.product.generic_name ||
-          "Produto sem nome";
-        router.push({ pathname: "/", params: { novoItem: nomeDoProduto } });
-      } else {
-        Alert.alert(
-          "Produto não encontrado",
-          json.error || "Este código não foi encontrado na base de dados.",
-          [{ text: "OK", onPress: () => setScanned(false) }]
-        );
-      }
-    } catch (error) {
-      console.error("Erro no scanner:", error);
-      Alert.alert(
-        "Erro de Rede",
-        "Não foi possível conectar. Tente novamente.",
-        [{ text: "OK", onPress: () => setScanned(false) }]
-      );
-    }
+  // A função agora é muito mais simples
+  const handleBarCodeScanned = ({ data }: { data: string }) => {
+    // Apenas navega de volta para a tela inicial, passando o código de barras como parâmetro
+    router.push({ pathname: "/", params: { barcode: data } });
   };
 
   if (!permission) return <View />;
@@ -83,6 +40,11 @@ export default function ScannerScreen() {
           style={StyleSheet.absoluteFillObject}
         />
       )}
+      <View style={styles.overlay}>
+        <Text style={styles.textoAjuda}>
+          Aponte a câmera para um código de barras
+        </Text>
+      </View>
     </View>
   );
 }
@@ -96,4 +58,19 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   textoStatus: { textAlign: "center", fontSize: 18, marginBottom: 20 },
+  overlay: {
+    position: "absolute",
+    bottom: 100,
+    left: 20,
+    right: 20,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    borderRadius: 10,
+    padding: 15,
+  },
+  textoAjuda: {
+    color: "#FFF",
+    textAlign: "center",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
 });

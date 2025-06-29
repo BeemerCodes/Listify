@@ -1,31 +1,35 @@
+// FICHEIRO FINAL E DEFINITIVO: app/index.tsx
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  Keyboard,
-  Platform,
-  Pressable,
-  SafeAreaView,
-  StatusBar,
   StyleSheet,
   Text,
-  TextInput,
   View,
   FlatList,
+  SafeAreaView,
+  StatusBar,
+  Pressable,
+  Keyboard,
+  Platform,
+  ActivityIndicator,
+  Alert,
+  TextInput,
 } from "react-native";
 
+// --- Definição das Estruturas de Dados ---
 interface Item {
   id: string;
   texto: string;
   quantidade: number;
   comprado: boolean;
 }
-
 interface ListaDeCompras {
   id: string;
   nome: string;
   itens: Item[];
 }
 
+// --- Paleta de Cores e Ícones ---
 const Cores = {
   roxoPrincipal: "#8B5CF6",
   roxoClaro: "#A78BFA",
@@ -37,7 +41,6 @@ const Cores = {
   cinzaRiscado: "#9CA3AF",
   vermelhoExcluir: "#EF4444",
 };
-
 const IconeAdicionar = () => (
   <Text style={{ color: Cores.branco, fontSize: 24, lineHeight: 24 }}>+</Text>
 );
@@ -50,46 +53,63 @@ export default function CurrentListScreen() {
   const router = useRouter();
 
   const [todasAsListas, setTodasAsListas] = useState<ListaDeCompras[]>([
-    {
-      id: "1",
-      nome: "🛒 Compras do Mês",
-      itens: [
-        { id: "101", texto: "Leite Integral", quantidade: 2, comprado: false },
-        { id: "102", texto: "Pão de Forma", quantidade: 1, comprado: true },
-      ],
-    },
-    {
-      id: "2",
-      nome: "🎉 Festa de Aniversário",
-      itens: [],
-    },
+    { id: "1", nome: "🛒 Minha Lista", itens: [] },
   ]);
   const [listaAtivaId, setListaAtivaId] = useState("1");
   const [itemTexto, setItemTexto] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const listaAtiva = todasAsListas.find((l) => l.id === listaAtivaId);
 
-  const adicionarItemDaAPI = (texto: string) => {
-    if (!listaAtiva) return;
+  // Efeito que "ouve" pelo código de barras vindo do scanner
+  useEffect(() => {
+    const barcode = params.barcode;
+    if (barcode && typeof barcode === "string" && barcode.length > 0) {
+      buscarProduto(barcode);
+      router.setParams({ barcode: "" }); // Limpa o parâmetro para não re-executar
+    }
+  }, [params.barcode]);
+
+  // --- Função de Busca na API v0 (A versão correta e estável) ---
+  const buscarProduto = async (barcode: string) => {
+    setLoading(true);
+    const url = `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`;
+
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: { "User-Agent": "ListfyApp/1.0 - Mobile App" },
+      });
+      const json = await response.json();
+
+      if (json.status === 1 && json.product) {
+        const nomeDoProduto =
+          json.product.product_name ||
+          json.product.generic_name ||
+          "Produto escaneado";
+        adicionarItem(nomeDoProduto);
+      } else {
+        Alert.alert(
+          "Produto não encontrado",
+          "Este código de barras não foi encontrado na base de dados do Open Food Facts."
+        );
+      }
+    } catch (error) {
+      Alert.alert(
+        "Erro de Rede",
+        "Não foi possível buscar o produto. Verifique a sua conexão com a internet."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- Funções para Manipular a Lista ---
+  const adicionarItem = (texto: string) => {
+    if (texto.trim() === "" || !listaAtiva) return;
     const novoItem: Item = {
       id: Date.now().toString(),
       texto: texto,
-      quantidade: 1,
-      comprado: false,
-    };
-    const novasListas = todasAsListas.map((lista) =>
-      lista.id === listaAtivaId
-        ? { ...lista, itens: [novoItem, ...lista.itens] }
-        : lista
-    );
-    setTodasAsListas(novasListas);
-  };
-
-  const handleAdicionarItem = () => {
-    if (itemTexto.trim() === "" || !listaAtiva) return;
-    const novoItem: Item = {
-      id: Date.now().toString(),
-      texto: itemTexto,
       quantidade: 1,
       comprado: false,
     };
@@ -103,29 +123,25 @@ export default function CurrentListScreen() {
     Keyboard.dismiss();
   };
 
+  const handleAdicionarManual = () => adicionarItem(itemTexto);
+
   const handleMudarQuantidade = (itemId: string, delta: number) => {
-    if (!listaAtiva) return;
-    const novasListas = todasAsListas.map((lista) => {
-      if (lista.id === listaAtivaId) {
-        const novosItens = lista.itens.map((item) => {
-          if (item.id === itemId) {
-            const novaQuantidade = item.quantidade + delta;
-            return {
-              ...item,
-              quantidade: novaQuantidade > 0 ? novaQuantidade : 1,
-            };
+    const novasListas = todasAsListas.map((l) =>
+      l.id === listaAtivaId
+        ? {
+            ...l,
+            itens: l.itens.map((i) =>
+              i.id === itemId
+                ? { ...i, quantidade: Math.max(1, i.quantidade + delta) }
+                : i
+            ),
           }
-          return item;
-        });
-        return { ...lista, itens: novosItens };
-      }
-      return lista;
-    });
+        : l
+    );
     setTodasAsListas(novasListas);
   };
 
   const handleMarcarItem = (itemId: string) => {
-    if (!listaAtiva) return;
     const novasListas = todasAsListas.map((l) =>
       l.id === listaAtivaId
         ? {
@@ -140,7 +156,6 @@ export default function CurrentListScreen() {
   };
 
   const handleRemoverItem = (itemId: string) => {
-    if (!listaAtiva) return;
     const novasListas = todasAsListas.map((l) =>
       l.id === listaAtivaId
         ? { ...l, itens: l.itens.filter((i) => i.id !== itemId) }
@@ -148,13 +163,6 @@ export default function CurrentListScreen() {
     );
     setTodasAsListas(novasListas);
   };
-
-  useEffect(() => {
-    if (params.novoItem && typeof params.novoItem === "string") {
-      adicionarItemDaAPI(params.novoItem);
-      router.setParams({ novoItem: "" });
-    }
-  }, [params.novoItem]);
 
   const renderItem = ({ item }: { item: Item }) => (
     <View style={styles.itemListaContainer}>
@@ -167,24 +175,14 @@ export default function CurrentListScreen() {
         >
           {item.comprado && <Text style={styles.checkboxCheck}>✓</Text>}
         </View>
-        <View>
-          <Text
-            style={[
-              styles.itemListaTexto,
-              item.comprado && styles.itemTextoComprado,
-            ]}
-          >
-            {item.texto}
-          </Text>
-          <Text
-            style={[
-              styles.itemQuantidadeTexto,
-              item.comprado && styles.itemTextoComprado,
-            ]}
-          >
-            Quantidade: {item.quantidade}
-          </Text>
-        </View>
+        <Text
+          style={[
+            styles.itemListaTexto,
+            item.comprado && styles.itemTextoComprado,
+          ]}
+        >
+          {item.texto}
+        </Text>
       </Pressable>
       <View style={styles.acoesItem}>
         <Pressable
@@ -193,6 +191,7 @@ export default function CurrentListScreen() {
         >
           <Text style={styles.textoBotaoAcao}>-</Text>
         </Pressable>
+        <Text style={styles.quantidade}>{item.quantidade}</Text>
         <Pressable
           onPress={() => handleMudarQuantidade(item.id, 1)}
           style={styles.botaoAcao}
@@ -212,22 +211,24 @@ export default function CurrentListScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={Cores.cinzaFundo} />
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color={Cores.roxoPrincipal} />
+        </View>
+      )}
 
       <View style={styles.headerContainer}>
-        <Text style={styles.titulo}>
-          {listaAtiva?.nome || "Nenhuma lista selecionada"}
-        </Text>
+        <Text style={styles.titulo}>{listaAtiva?.nome || "Minha Lista"}</Text>
       </View>
-
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
-          placeholder="Adicionar item..."
+          placeholder="Adicionar item manualmente..."
           value={itemTexto}
           onChangeText={setItemTexto}
-          onSubmitEditing={handleAdicionarItem}
+          onSubmitEditing={handleAdicionarManual}
         />
-        <Pressable style={styles.botao} onPress={handleAdicionarItem}>
+        <Pressable style={styles.botao} onPress={handleAdicionarManual}>
           <IconeAdicionar />
         </Pressable>
       </View>
@@ -236,19 +237,28 @@ export default function CurrentListScreen() {
         data={listaAtiva?.itens || []}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
-        ListEmptyComponent={() => (
-          <Text style={styles.listaVaziaTexto}>Esta lista está vazia.</Text>
-        )}
+        ListEmptyComponent={() =>
+          !loading && (
+            <Text style={styles.listaVaziaTexto}>A sua lista está vazia.</Text>
+          )
+        }
       />
     </SafeAreaView>
   );
 }
 
+// --- Folha de Estilos ---
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Cores.cinzaFundo,
     paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   headerContainer: { paddingVertical: 20, paddingHorizontal: 20 },
   titulo: {
@@ -284,12 +294,6 @@ const styles = StyleSheet.create({
     backgroundColor: Cores.roxoPrincipal,
     elevation: 8,
   },
-  listaVaziaTexto: {
-    fontSize: 16,
-    color: Cores.cinzaTexto,
-    textAlign: "center",
-    marginTop: 50,
-  },
   itemListaContainer: {
     backgroundColor: Cores.branco,
     paddingVertical: 10,
@@ -319,17 +323,28 @@ const styles = StyleSheet.create({
     borderColor: Cores.roxoPrincipal,
   },
   checkboxCheck: { color: Cores.branco, fontWeight: "bold" },
-  itemListaTexto: { fontSize: 18, color: Cores.pretoTexto },
+  itemListaTexto: { fontSize: 18, color: Cores.pretoTexto, flexShrink: 1 },
   itemTextoComprado: {
     textDecorationLine: "line-through",
     color: Cores.cinzaRiscado,
   },
-  itemQuantidadeTexto: { fontSize: 14, color: Cores.cinzaTexto },
   acoesItem: { flexDirection: "row", alignItems: "center" },
   botaoAcao: { padding: 8 },
   textoBotaoAcao: {
     fontSize: 20,
     color: Cores.roxoPrincipal,
     fontWeight: "bold",
+  },
+  quantidade: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginHorizontal: 5,
+    color: Cores.pretoTexto,
+  },
+  listaVaziaTexto: {
+    fontSize: 16,
+    color: Cores.cinzaTexto,
+    textAlign: "center",
+    marginTop: 50,
   },
 });
