@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -14,22 +14,10 @@ import {
   Alert,
   TextInput,
 } from "react-native";
+import { ListContext, Item } from "../src/context/ListContext";
+import { ThemeContext } from "../src/context/ThemeContext";
+import { Ionicons } from "@expo/vector-icons";
 
-// --- Definição das Estruturas de Dados ---
-interface Item {
-  id: string;
-  texto: string;
-  quantidade: number;
-  comprado: boolean;
-  detalhes?: any; // Armazena dados completos da API
-}
-interface ListaDeCompras {
-  id: string;
-  nome: string;
-  itens: Item[];
-}
-
-// --- Paleta de Cores e Ícones ---
 const Cores = {
   roxoPrincipal: "#8B5CF6",
   roxoClaro: "#A78BFA",
@@ -40,28 +28,212 @@ const Cores = {
   cinzaTexto: "#6B7281",
   cinzaRiscado: "#9CA3AF",
   vermelhoExcluir: "#EF4444",
+  cinzaFundoEscuro: "#1F2937",
+  brancoEscuro: "#2D3748",
+  pretoTextoEscuro: "#E5E7EB",
+  cinzaTextoEscuro: "#9CA3AF",
 };
+
 const IconeAdicionar = () => (
   <Text style={{ color: Cores.branco, fontSize: 24, lineHeight: 24 }}>+</Text>
 );
+
 const IconeLixeira = () => (
   <Text style={{ color: Cores.vermelhoExcluir, fontSize: 20 }}>🗑️</Text>
 );
 
+interface ThemeStyles {
+  container: { backgroundColor: string };
+  section: { backgroundColor: string; borderColor: string };
+  title: { color: string };
+  label: { color: string };
+  value: { color: string };
+  button: { backgroundColor: string };
+  buttonText: { color: string };
+  input: { backgroundColor: string; color: string; borderColor: string };
+  itemListaContainer: { backgroundColor: string; borderColor: string };
+  listaVaziaTexto: { color: string };
+  checkbox: { borderColor: string };
+  checkboxComprado: { backgroundColor: string; borderColor: string };
+  textoBotaoAcao: { color: string };
+  placeholderText: { color: string };
+}
+
+interface ThemeStylesMap {
+  light: ThemeStyles;
+  dark: ThemeStyles;
+}
+
 export default function CurrentListScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
-
-  const [todasAsListas, setTodasAsListas] = useState<ListaDeCompras[]>([
-    { id: "1", nome: "🛒 Minha Lista", itens: [] },
-  ]);
-  const [listaAtivaId, setListaAtivaId] = useState("1");
+  const { todasAsListas, setTodasAsListas, listaAtivaId } =
+    useContext(ListContext);
+  const { theme } = useContext(ThemeContext);
   const [itemTexto, setItemTexto] = useState("");
   const [loading, setLoading] = useState(false);
 
   const listaAtiva = todasAsListas.find((l) => l.id === listaAtivaId);
 
-  // Efeito que "ouve" pelo código de barras vindo do scanner
+  const themeStyles: ThemeStylesMap = {
+    light: {
+      container: { backgroundColor: Cores.cinzaFundo },
+      section: { backgroundColor: Cores.branco, borderColor: Cores.cinzaInput },
+      title: { color: Cores.pretoTexto },
+      label: { color: Cores.pretoTexto },
+      value: { color: Cores.cinzaTexto },
+      button: { backgroundColor: Cores.roxoPrincipal },
+      buttonText: { color: Cores.branco },
+      input: {
+        backgroundColor: Cores.branco,
+        color: Cores.pretoTexto,
+        borderColor: Cores.cinzaInput,
+      },
+      itemListaContainer: {
+        backgroundColor: Cores.branco,
+        borderColor: Cores.cinzaInput,
+      },
+      listaVaziaTexto: { color: Cores.cinzaTexto },
+      checkbox: { borderColor: Cores.cinzaInput },
+      checkboxComprado: {
+        backgroundColor: Cores.roxoPrincipal,
+        borderColor: Cores.roxoPrincipal,
+      },
+      textoBotaoAcao: { color: Cores.roxoPrincipal },
+      placeholderText: { color: Cores.cinzaTexto },
+    },
+    dark: {
+      container: { backgroundColor: Cores.cinzaFundoEscuro },
+      section: {
+        backgroundColor: Cores.brancoEscuro,
+        borderColor: Cores.cinzaTextoEscuro,
+      },
+      title: { color: Cores.pretoTextoEscuro },
+      label: { color: Cores.pretoTextoEscuro },
+      value: { color: Cores.cinzaTextoEscuro },
+      button: { backgroundColor: Cores.roxoClaro },
+      buttonText: { color: Cores.branco },
+      input: {
+        backgroundColor: Cores.brancoEscuro,
+        color: Cores.pretoTextoEscuro,
+        borderColor: Cores.cinzaTextoEscuro,
+      },
+      itemListaContainer: {
+        backgroundColor: Cores.brancoEscuro,
+        borderColor: Cores.cinzaTextoEscuro,
+      },
+      listaVaziaTexto: { color: Cores.cinzaTextoEscuro },
+      checkbox: { borderColor: Cores.cinzaTextoEscuro },
+      checkboxComprado: {
+        backgroundColor: Cores.roxoClaro,
+        borderColor: Cores.roxoClaro,
+      },
+      textoBotaoAcao: { color: Cores.roxoClaro },
+      placeholderText: { color: Cores.cinzaTextoEscuro },
+    },
+  };
+
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+      ...themeStyles[theme as keyof ThemeStylesMap].container,
+    },
+    loadingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(0,0,0,0.3)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    headerContainer: { paddingVertical: 20, paddingHorizontal: 20 },
+    titulo: {
+      fontSize: 36,
+      fontWeight: "bold",
+      textAlign: "left",
+      ...themeStyles[theme as keyof ThemeStylesMap].title,
+    },
+    inputContainer: {
+      flexDirection: "row",
+      paddingHorizontal: 20,
+      marginBottom: 20,
+      alignItems: "center",
+    },
+    input: {
+      flex: 1,
+      height: 55,
+      paddingHorizontal: 20,
+      borderRadius: 12,
+      fontSize: 16,
+      marginRight: 10,
+      borderWidth: 1,
+      ...themeStyles[theme as keyof ThemeStylesMap].input,
+    },
+    botao: {
+      width: 55,
+      height: 55,
+      borderRadius: 12,
+      justifyContent: "center",
+      alignItems: "center",
+      ...themeStyles[theme as keyof ThemeStylesMap].button,
+      elevation: 8,
+    },
+    itemListaContainer: {
+      paddingVertical: 10,
+      paddingHorizontal: 15,
+      borderRadius: 12,
+      marginHorizontal: 20,
+      marginBottom: 10,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      borderWidth: 1,
+      ...themeStyles[theme as keyof ThemeStylesMap].itemListaContainer,
+    },
+    checkboxArea: { flexDirection: "row", alignItems: "center", flex: 1 },
+    checkbox: {
+      width: 24,
+      height: 24,
+      borderRadius: 6,
+      borderWidth: 2,
+      justifyContent: "center",
+      alignItems: "center",
+      marginRight: 15,
+      ...themeStyles[theme as keyof ThemeStylesMap].checkbox,
+    },
+    checkboxComprado: {
+      ...themeStyles[theme as keyof ThemeStylesMap].checkboxComprado,
+    },
+    checkboxCheck: { color: Cores.branco, fontWeight: "bold" },
+    itemListaTexto: {
+      fontSize: 18,
+      flexShrink: 1,
+      ...themeStyles[theme as keyof ThemeStylesMap].label,
+    },
+    itemTextoComprado: {
+      textDecorationLine: "line-through",
+      ...themeStyles[theme as keyof ThemeStylesMap].value,
+    },
+    acoesItem: { flexDirection: "row", alignItems: "center" },
+    botaoAcao: { padding: 8 },
+    textoBotaoAcao: {
+      fontSize: 20,
+      fontWeight: "bold",
+      ...themeStyles[theme as keyof ThemeStylesMap].textoBotaoAcao,
+    },
+    quantidade: {
+      fontSize: 18,
+      fontWeight: "bold",
+      marginHorizontal: 5,
+      ...themeStyles[theme as keyof ThemeStylesMap].label,
+    },
+    listaVaziaTexto: {
+      fontSize: 16,
+      textAlign: "center",
+      marginTop: 50,
+      ...themeStyles[theme as keyof ThemeStylesMap].listaVaziaTexto,
+    },
+  });
+
   useEffect(() => {
     const barcode = params.barcode;
     if (barcode && typeof barcode === "string" && barcode.length > 0) {
@@ -70,7 +242,6 @@ export default function CurrentListScreen() {
     }
   }, [params.barcode]);
 
-  // --- Função de Busca na API v2 ---
   const buscarProduto = async (barcode: string) => {
     if (!/^\d{8,13}$/.test(barcode)) {
       Alert.alert(
@@ -81,10 +252,9 @@ export default function CurrentListScreen() {
     }
 
     setLoading(true);
-    const url = `https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name,product_name_en,product_name_pt,generic_name,brands,quantity,ingredients_text`;
+    const url = `https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name,product_name_en,product_name_pt,generic_name,brands,quantity,ingredients_text,categories,image_url,nutriments`;
 
     try {
-      console.log("Código de barras escaneado:", barcode);
       const response = await fetch(url, {
         method: "GET",
         headers: {
@@ -101,7 +271,6 @@ export default function CurrentListScreen() {
       }
 
       const json = await response.json();
-      console.log("Resposta da API:", json);
 
       if (json.status === 1 && json.product) {
         const nomeDoProduto =
@@ -120,7 +289,6 @@ export default function CurrentListScreen() {
         );
       }
     } catch (error: any) {
-      console.error("Erro ao buscar produto:", error);
       Alert.alert(
         "Erro",
         error.message === "Produto não encontrado na base de dados."
@@ -132,7 +300,6 @@ export default function CurrentListScreen() {
     }
   };
 
-  // --- Funções para Manipular a Lista ---
   const adicionarItem = (texto: string, detalhes?: any) => {
     if (texto.trim() === "" || !listaAtiva) return;
     const novoItem: Item = {
@@ -196,7 +363,7 @@ export default function CurrentListScreen() {
   const handleVerDetalhes = (item: Item) => {
     if (item.detalhes) {
       router.push({
-        pathname: "/details/[id].tsx", // Atualizado para a rota dinâmica
+        pathname: "/details/[id]",
         params: { id: item.id, detalhes: JSON.stringify(item.detalhes) },
       });
     } else {
@@ -254,13 +421,20 @@ export default function CurrentListScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={Cores.cinzaFundo} />
+      <StatusBar
+        barStyle={theme === "light" ? "dark-content" : "light-content"}
+        backgroundColor={
+          themeStyles[theme as keyof ThemeStylesMap].container.backgroundColor
+        }
+      />
       {loading && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color={Cores.roxoPrincipal} />
+          <ActivityIndicator
+            size="large"
+            color={theme === "light" ? Cores.roxoPrincipal : Cores.roxoClaro}
+          />
         </View>
       )}
-
       <View style={styles.headerContainer}>
         <Text style={styles.titulo}>{listaAtiva?.nome || "Minha Lista"}</Text>
       </View>
@@ -268,6 +442,9 @@ export default function CurrentListScreen() {
         <TextInput
           style={styles.input}
           placeholder="Adicionar item manualmente..."
+          placeholderTextColor={
+            themeStyles[theme as keyof ThemeStylesMap].placeholderText.color
+          }
           value={itemTexto}
           onChangeText={setItemTexto}
           onSubmitEditing={handleAdicionarManual}
@@ -276,7 +453,6 @@ export default function CurrentListScreen() {
           <IconeAdicionar />
         </Pressable>
       </View>
-
       <FlatList
         data={listaAtiva?.itens || []}
         renderItem={renderItem}
@@ -290,105 +466,3 @@ export default function CurrentListScreen() {
     </SafeAreaView>
   );
 }
-
-// --- Folha de Estilos ---
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Cores.cinzaFundo,
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
-  },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  headerContainer: { paddingVertical: 20, paddingHorizontal: 20 },
-  titulo: {
-    fontSize: 36,
-    fontWeight: "bold",
-    color: Cores.pretoTexto,
-    textAlign: "left",
-  },
-  inputContainer: {
-    flexDirection: "row",
-    paddingHorizontal: 20,
-    marginBottom: 20,
-    alignItems: "center",
-  },
-  input: {
-    flex: 1,
-    height: 55,
-    backgroundColor: Cores.branco,
-    color: Cores.pretoTexto,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    fontSize: 16,
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: Cores.cinzaInput,
-  },
-  botao: {
-    width: 55,
-    height: 55,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: Cores.roxoPrincipal,
-    elevation: 8,
-  },
-  itemListaContainer: {
-    backgroundColor: Cores.branco,
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderRadius: 12,
-    marginHorizontal: 20,
-    marginBottom: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderWidth: 1,
-    borderColor: Cores.cinzaInput,
-  },
-  checkboxArea: { flexDirection: "row", alignItems: "center", flex: 1 },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: Cores.cinzaInput,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 15,
-  },
-  checkboxComprado: {
-    backgroundColor: Cores.roxoPrincipal,
-    borderColor: Cores.roxoPrincipal,
-  },
-  checkboxCheck: { color: Cores.branco, fontWeight: "bold" },
-  itemListaTexto: { fontSize: 18, color: Cores.pretoTexto, flexShrink: 1 },
-  itemTextoComprado: {
-    textDecorationLine: "line-through",
-    color: Cores.cinzaRiscado,
-  },
-  acoesItem: { flexDirection: "row", alignItems: "center" },
-  botaoAcao: { padding: 8 },
-  textoBotaoAcao: {
-    fontSize: 20,
-    color: Cores.roxoPrincipal,
-    fontWeight: "bold",
-  },
-  quantidade: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginHorizontal: 5,
-    color: Cores.pretoTexto,
-  },
-  listaVaziaTexto: {
-    fontSize: 16,
-    color: Cores.cinzaTexto,
-    textAlign: "center",
-    marginTop: 50,
-  },
-});
