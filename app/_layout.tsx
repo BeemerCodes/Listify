@@ -41,11 +41,16 @@ export default function RootLayout() {
           ),
         }}
       />
-      {/* ADICIONE ESTA PARTE - Ela esconde o not-found da barra de abas */}
       <Tabs.Screen
         name="+not-found"
         options={{
-          href: null, // A mágica está aqui!
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="details/[id]"
+        options={{
+          href: null, // Esconde da barra de navegação
         }}
       />
     </Tabs>

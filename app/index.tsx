@@ -1,4 +1,3 @@
-// FICHEIRO FINAL E DEFINITIVO: app/index.tsx
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -22,6 +21,7 @@ interface Item {
   texto: string;
   quantidade: number;
   comprado: boolean;
+  detalhes?: any; // Armazena dados completos da API
 }
 interface ListaDeCompras {
   id: string;
@@ -66,10 +66,11 @@ export default function CurrentListScreen() {
     const barcode = params.barcode;
     if (barcode && typeof barcode === "string" && barcode.length > 0) {
       buscarProduto(barcode);
-      router.setParams({ barcode: "" }); // Limpa o parâmetro para não re-executar
+      router.setParams({ barcode: "" });
     }
   }, [params.barcode]);
 
+  // --- Função de Busca na API v2 ---
   const buscarProduto = async (barcode: string) => {
     if (!/^\d{8,13}$/.test(barcode)) {
       Alert.alert(
@@ -80,7 +81,7 @@ export default function CurrentListScreen() {
     }
 
     setLoading(true);
-    const url = `https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name,product_name_en,product_name_pt,generic_name,brands`;
+    const url = `https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name,product_name_en,product_name_pt,generic_name,brands,quantity,ingredients_text`;
 
     try {
       console.log("Código de barras escaneado:", barcode);
@@ -100,19 +101,18 @@ export default function CurrentListScreen() {
       }
 
       const json = await response.json();
-      console.log("Resposta da API:", json); // Log para depuração
+      console.log("Resposta da API:", json);
 
       if (json.status === 1 && json.product) {
-        // Priorize a marca (brands) junto com o nome do produto
         const nomeDoProduto =
           json.product.product_name_pt ||
           json.product.product_name_en ||
           json.product.product_name ||
-          (json.product.brands
-            ? `${json.product.brands} ${json.product.generic_name || "Café"}`
-            : json.product.generic_name) ||
+          (json.product.brands && json.product.generic_name
+            ? `${json.product.brands} ${json.product.generic_name}`
+            : json.product.brands || json.product.generic_name) ||
           "Produto escaneado";
-        adicionarItem(nomeDoProduto);
+        adicionarItem(nomeDoProduto, json.product);
       } else {
         Alert.alert(
           "Produto não encontrado",
@@ -133,13 +133,14 @@ export default function CurrentListScreen() {
   };
 
   // --- Funções para Manipular a Lista ---
-  const adicionarItem = (texto: string) => {
+  const adicionarItem = (texto: string, detalhes?: any) => {
     if (texto.trim() === "" || !listaAtiva) return;
     const novoItem: Item = {
       id: Date.now().toString(),
       texto: texto,
       quantidade: 1,
       comprado: false,
+      detalhes,
     };
     const novasListas = todasAsListas.map((lista) =>
       lista.id === listaAtivaId
@@ -192,17 +193,32 @@ export default function CurrentListScreen() {
     setTodasAsListas(novasListas);
   };
 
+  const handleVerDetalhes = (item: Item) => {
+    if (item.detalhes) {
+      router.push({
+        pathname: "/details/[id].tsx", // Atualizado para a rota dinâmica
+        params: { id: item.id, detalhes: JSON.stringify(item.detalhes) },
+      });
+    } else {
+      Alert.alert(
+        "Sem detalhes",
+        "Este item foi adicionado manualmente e não possui detalhes."
+      );
+    }
+  };
+
   const renderItem = ({ item }: { item: Item }) => (
-    <View style={styles.itemListaContainer}>
-      <Pressable
-        onPress={() => handleMarcarItem(item.id)}
-        style={styles.checkboxArea}
-      >
-        <View
+    <Pressable
+      onPress={() => handleVerDetalhes(item)}
+      style={styles.itemListaContainer}
+    >
+      <View style={styles.checkboxArea}>
+        <Pressable
+          onPress={() => handleMarcarItem(item.id)}
           style={[styles.checkbox, item.comprado && styles.checkboxComprado]}
         >
           {item.comprado && <Text style={styles.checkboxCheck}>✓</Text>}
-        </View>
+        </Pressable>
         <Text
           style={[
             styles.itemListaTexto,
@@ -211,7 +227,7 @@ export default function CurrentListScreen() {
         >
           {item.texto}
         </Text>
-      </Pressable>
+      </View>
       <View style={styles.acoesItem}>
         <Pressable
           onPress={() => handleMudarQuantidade(item.id, -1)}
@@ -233,7 +249,7 @@ export default function CurrentListScreen() {
           <IconeLixeira />
         </Pressable>
       </View>
-    </View>
+    </Pressable>
   );
 
   return (
