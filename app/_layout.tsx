@@ -37,104 +37,108 @@ interface ThemeStylesMap {
   dark: ThemeStyles;
 }
 
-export default function RootLayout() {
-  const { theme } = useContext(ThemeContext) || {
-    theme: useColorScheme() || "light",
-  };
+const themeStyles: ThemeStylesMap = {
+  light: {
+    tabBarActiveTintColor: Cores.roxoPrincipal,
+    tabBarInactiveTintColor: Cores.cinzaTexto,
+    tabBarStyle: {
+      backgroundColor: Cores.branco,
+      borderTopColor: Cores.cinzaInput,
+      borderTopWidth: 1,
+      shadowOpacity: 0.1,
+      elevation: 3,
+    },
+  },
+  dark: {
+    tabBarActiveTintColor: Cores.roxoClaro,
+    tabBarInactiveTintColor: Cores.cinzaTextoEscuro,
+    tabBarStyle: {
+      backgroundColor: "#483D8B",
+      borderTopColor: "#483D8B",
+      borderTopWidth: 0,
+      shadowOpacity: 0.15,
+      elevation: 6,
+    },
+  },
+};
 
-  const themeStyles: ThemeStylesMap = {
-    light: {
-      tabBarActiveTintColor: Cores.roxoPrincipal,
-      tabBarInactiveTintColor: Cores.cinzaTexto,
-      tabBarStyle: {
-        backgroundColor: Cores.branco,
-        borderTopColor: Cores.cinzaInput,
-        borderTopWidth: 1,
-        shadowOpacity: 0.1,
-        elevation: 3,
-      },
-    },
-    dark: {
-      tabBarActiveTintColor: Cores.roxoClaro,
-      tabBarInactiveTintColor: Cores.cinzaTextoEscuro,
-      tabBarStyle: {
-        backgroundColor: Cores.cinzaFundoEscuro,
-        borderTopColor: Cores.cinzaTextoEscuro,
-        borderTopWidth: 1,
-        shadowOpacity: 0.1,
-        elevation: 3,
-      },
-    },
-  };
+function TabsLayout() {
+  const { theme } = useContext(ThemeContext);
+  const colorScheme = useColorScheme();
+  const currentTheme = theme || colorScheme || "light";
 
   return (
-    <ListProvider>
-      <ThemeProvider>
-        <Tabs
-          screenOptions={{
-            headerShown: false,
-            tabBarActiveTintColor:
-              themeStyles[theme as keyof ThemeStylesMap].tabBarActiveTintColor,
-            tabBarInactiveTintColor:
-              themeStyles[theme as keyof ThemeStylesMap]
-                .tabBarInactiveTintColor,
-            tabBarStyle: themeStyles[theme as keyof ThemeStylesMap].tabBarStyle,
-          }}
-        >
-          <Tabs.Screen
-            name="index"
-            options={{
-              title: "Lista Atual",
-              tabBarIcon: ({ color, size }) => (
-                <Ionicons name="cart-outline" size={size} color={color} />
-              ),
-            }}
-          />
-          <Tabs.Screen
-            name="scanner"
-            options={{
-              title: "Scanner",
-              tabBarIcon: ({ color, size }) => (
-                <Ionicons name="barcode-outline" size={size} color={color} />
-              ),
-            }}
-          />
-          <Tabs.Screen
-            name="lists"
-            options={{
-              title: "Minhas Listas",
-              tabBarIcon: ({ color, size }) => (
-                <Ionicons
-                  name="file-tray-full-outline"
-                  size={size}
-                  color={color}
-                />
-              ),
-            }}
-          />
-          <Tabs.Screen
-            name="settings"
-            options={{
-              title: "Configurações",
-              tabBarIcon: ({ color, size }) => (
-                <Ionicons name="settings-outline" size={size} color={color} />
-              ),
-            }}
-          />
-          <Tabs.Screen
-            name="+not-found"
-            options={{
-              href: null,
-            }}
-          />
-          <Tabs.Screen
-            name="details/[id]"
-            options={{
-              href: null,
-            }}
-          />
-        </Tabs>
-      </ThemeProvider>
-    </ListProvider>
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor:
+          themeStyles[currentTheme as keyof ThemeStylesMap]
+            .tabBarActiveTintColor,
+        tabBarInactiveTintColor:
+          themeStyles[currentTheme as keyof ThemeStylesMap]
+            .tabBarInactiveTintColor,
+        tabBarStyle:
+          themeStyles[currentTheme as keyof ThemeStylesMap].tabBarStyle,
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: "Lista Atual",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="cart-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="scanner"
+        options={{
+          title: "Scanner",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="barcode-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="lists"
+        options={{
+          title: "Minhas Listas",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="file-tray-full-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: "Configurações",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="settings-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="+not-found"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="details/[id]"
+        options={{
+          href: null,
+        }}
+      />
+    </Tabs>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <ListProvider>
+        <TabsLayout />
+      </ListProvider>
+    </ThemeProvider>
   );
 }
