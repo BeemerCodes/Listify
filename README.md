@@ -1,29 +1,50 @@
-# 🛒 Listfy  
-**Sua lista de compras inteligente.**  
-Escaneie o código de barras e deixe a mágica acontecer. Chega de esquecer itens ou perder tempo digitando!
+# Welcome to your Expo app 👋
 
----
+This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
-## 🚀 Sobre o Projeto  
-**Listfy** é um aplicativo mobile criado para ajudar na maneira como fazemos nossas listas de compras.  
-A ideia central é simples: em vez de digitar cada item manualmente, você usa a câmera do seu celular para escanear o código de barras do produto, e ele é adicionado instantaneamente à sua lista.
+## Get started
 
-Este projeto nasceu da vontade de tornar uma tarefa rotineira mais rápida, eficiente e até um pouco divertida.
+1. Install dependencies
 
----
+   ```bash
+   npm install
+   ```
 
-## ✨ Funcionalidades Principais  
-- 📲 **Scan de Código de Barras:** Adicione produtos à sua lista de forma instantânea usando a câmera do celular.  
-- 📋 **Listas Múltiplas:** Crie e gerencie diferentes listas (Ex: "Compras do Mês", "Churrasco do Fim de Semana").  
-- ✍️ **Adição Manual:** Se um produto não tiver código de barras ou não for encontrado, você pode adicioná-lo manualmente.  
-- ✔️ **Check de Itens:** Marque os itens que você já colocou no carrinho para não se perder.
+2. Start the app
 
----
+   ```bash
+   npx expo start
+   ```
 
-## 🛠️ Tecnologias Utilizadas  
-Este projeto está sendo construído com as seguintes tecnologias:
+In the output, you'll find options to open the app in a
 
-- **React Native:** Framework para desenvolvimento de apps nativos para iOS e Android.  
-- **Expo:** Plataforma e conjunto de ferramentas para facilitar o desenvolvimento com React Native.  
-- **expo-camera / expo-barcode-scanner:** Módulo para acessar a câmera do dispositivo e escanear códigos de barras.  
-- **Open Food Facts API:** API pública e colaborativa para buscar informações de produtos a partir do código de barras.
+- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
+- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
+- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
+- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+
+You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+
+## Get a fresh project
+
+When you're ready, run:
+
+```bash
+npm run reset-project
+```
+
+This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+
+## Learn more
+
+To learn more about developing your project with Expo, look at the following resources:
+
+- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
+- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+
+## Join the community
+
+Join our community of developers creating universal apps.
+
+- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
+- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
