@@ -70,12 +70,20 @@ export default function CurrentListScreen() {
     }
   }, [params.barcode]);
 
-  // --- Função de Busca na API v2 ---
   const buscarProduto = async (barcode: string) => {
+    if (!/^\d{8,13}$/.test(barcode)) {
+      Alert.alert(
+        "Erro",
+        "Código de barras inválido. Deve conter 8 a 13 dígitos numéricos."
+      );
+      return;
+    }
+
     setLoading(true);
-    const url = `https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name,product_name_en,product_name_pt,generic_name`;
+    const url = `https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name,product_name_en,product_name_pt,generic_name,brands`;
 
     try {
+      console.log("Código de barras escaneado:", barcode);
       const response = await fetch(url, {
         method: "GET",
         headers: {
@@ -85,18 +93,24 @@ export default function CurrentListScreen() {
       });
 
       if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error("Produto não encontrado na base de dados.");
+        }
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
 
       const json = await response.json();
+      console.log("Resposta da API:", json); // Log para depuração
 
       if (json.status === 1 && json.product) {
-        // Priorize nomes em português, depois inglês, depois genérico
+        // Priorize a marca (brands) junto com o nome do produto
         const nomeDoProduto =
           json.product.product_name_pt ||
           json.product.product_name_en ||
           json.product.product_name ||
-          json.product.generic_name ||
+          (json.product.brands
+            ? `${json.product.brands} ${json.product.generic_name || "Café"}`
+            : json.product.generic_name) ||
           "Produto escaneado";
         adicionarItem(nomeDoProduto);
       } else {
@@ -105,11 +119,13 @@ export default function CurrentListScreen() {
           "Este código de barras não foi encontrado na base de dados do Open Food Facts."
         );
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao buscar produto:", error);
       Alert.alert(
         "Erro",
-        "Não foi possível buscar o produto. Verifique a conexão com a internet ou tente novamente."
+        error.message === "Produto não encontrado na base de dados."
+          ? "Este código de barras não está registrado no Open Food Facts."
+          : "Não foi possível buscar o produto. Verifique a conexão com a internet ou tente novamente."
       );
     } finally {
       setLoading(false);
