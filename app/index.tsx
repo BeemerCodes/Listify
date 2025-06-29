@@ -70,20 +70,31 @@ export default function CurrentListScreen() {
     }
   }, [params.barcode]);
 
-  // --- Função de Busca na API v0 (A versão correta e estável) ---
+  // --- Função de Busca na API v2 ---
   const buscarProduto = async (barcode: string) => {
     setLoading(true);
-    const url = `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`;
+    const url = `https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name,product_name_en,product_name_pt,generic_name`;
 
     try {
       const response = await fetch(url, {
         method: "GET",
-        headers: { "User-Agent": "ListfyApp/1.0 - Mobile App" },
+        headers: {
+          "User-Agent": "ListfyApp/1.0 - Mobile App",
+          Accept: "application/json",
+        },
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
       const json = await response.json();
 
       if (json.status === 1 && json.product) {
+        // Priorize nomes em português, depois inglês, depois genérico
         const nomeDoProduto =
+          json.product.product_name_pt ||
+          json.product.product_name_en ||
           json.product.product_name ||
           json.product.generic_name ||
           "Produto escaneado";
@@ -95,9 +106,10 @@ export default function CurrentListScreen() {
         );
       }
     } catch (error) {
+      console.error("Erro ao buscar produto:", error);
       Alert.alert(
-        "Erro de Rede",
-        "Não foi possível buscar o produto. Verifique a sua conexão com a internet."
+        "Erro",
+        "Não foi possível buscar o produto. Verifique a conexão com a internet ou tente novamente."
       );
     } finally {
       setLoading(false);
