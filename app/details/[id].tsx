@@ -10,13 +10,36 @@ import {
   ScrollView,
   Image,
   TextInput,
-  Alert,
+  Alert, // Manter Alert para confirmações ou erros críticos que não devem ser toasts
   KeyboardAvoidingView,
 } from "react-native";
 import { ThemeContext } from "../../src/context/ThemeContext";
 import { ListContext, Item } from "../../src/context/ListContext";
 import { Cores as GlobalCores } from "../../constants/Colors";
 import { StatusBar } from "expo-status-bar";
+import { showSuccessToast, showErrorToast } from "../../src/utils/toastService"; // Importar toasts
+
+// Interface para os estilos do tema (será definida abaixo)
+interface ThemeStyles {
+  container: { backgroundColor: string };
+  section: { backgroundColor: string; borderColor: string };
+  titulo: { color: string };
+  label: { color: string };
+  valor: { color: string };
+  input: { backgroundColor: string; color: string; borderColor: string; placeholderTextColor: string;};
+  botaoSalvar: { backgroundColor: string };
+  botaoVoltar: { backgroundColor: string };
+  textoBotaoSalvar: { color: string };
+  textoBotaoVoltar: { color: string };
+  imagemPlaceholder: { backgroundColor: string };
+  placeholderTexto: { color: string };
+  totalItemText: { color: string };
+}
+
+interface ThemeStylesMap {
+  light: ThemeStyles;
+  dark: ThemeStyles;
+}
 
 export default function ProductDetailsScreen() {
   const params = useLocalSearchParams();
@@ -35,8 +58,9 @@ export default function ProductDetailsScreen() {
   const [valorUnitarioEditavel, setValorUnitarioEditavel] = useState("");
   const [valorTotalCalculado, setValorTotalCalculado] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [isListaTarefasDetalhes, setIsListaTarefasDetalhes] = useState(false);
-  const currentColorScheme = theme as keyof typeof GlobalCores;
+  const [isListaTarefasDetalhes, setIsListaTarefasDetalhes] = useState(false); // Este estado determinará se é uma lista de tarefas
+  const currentColorScheme = theme as keyof typeof GlobalCores; // Definir currentColorScheme aqui
+
 
   useEffect(() => {
     setIsLoading(true);
@@ -57,16 +81,21 @@ export default function ProductDetailsScreen() {
       setValorUnitarioEditavel(foundItem.valorUnitario?.toString().replace(".", ",") || "");
       setIsListaTarefasDetalhes(nomeDaListaDoItem.toLowerCase() === "tarefas");
     } else if (!openFoodFactsDetalhes) {
-      Alert.alert("Erro", "Item não encontrado.", [{ text: "OK", onPress: () => router.back() }]);
+      showErrorToast("Item não encontrado em suas listas.", "Erro");
+      router.back(); // Voltar se o item não for encontrado
     }
     setIsLoading(false);
   }, [itemId, todasAsListas, router, openFoodFactsDetalhes]);
 
   useEffect(() => {
-    const quantidade = itemEditavel?.quantidade || 0; 
+    const quantidade = itemEditavel?.quantidade || 0;
+    // Converte valorUnitarioEditavel para número, tratando vírgula
     const valorUnit = parseFloat(valorUnitarioEditavel.replace(",", ".")) || 0;
     setValorTotalCalculado(quantidade * valorUnit);
   }, [valorUnitarioEditavel, itemEditavel?.quantidade]);
+
+  // const isDarkTheme = theme === "dark"; // Não é mais necessário com currentColorScheme
+  // themeStyles e currentThemeStyles não são mais necessários aqui, usaremos GlobalCores diretamente nos estilos do StyleSheet
 
   const styles = StyleSheet.create({
     container: {
@@ -77,15 +106,15 @@ export default function ProductDetailsScreen() {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: GlobalCores[currentColorScheme].background,
+      backgroundColor: GlobalCores[currentColorScheme].background, // Para cobrir a tela durante o loading
     },
-    loadingText: {
+    loadingText: { // Estilo para o texto de carregamento
         color: GlobalCores[currentColorScheme].text,
         fontSize: 16,
     },
     scrollContent: {
-      paddingHorizontal: 20,
       paddingBottom: Platform.OS === 'ios' ? 40 : 30,
+      paddingHorizontal: 20,
     },
     headerContainer: {
       paddingVertical: 20,
@@ -161,9 +190,9 @@ export default function ProductDetailsScreen() {
       justifyContent: "center",
       alignItems: "center",
       marginBottom: 15,
-      backgroundColor: GlobalCores[currentColorScheme].inputBackground,
+      backgroundColor: GlobalCores[currentColorScheme].inputBackground, // Usar uma cor de fundo do tema
     },
-    placeholderTexto: {
+    placeholderTexto: { // Para o texto dentro do placeholder da imagem
       fontSize: 16,
       color: GlobalCores[currentColorScheme].textSecondary,
     },
@@ -185,86 +214,92 @@ export default function ProductDetailsScreen() {
       fontWeight: "bold",
       textAlign: 'center',
     },
+    // Os estilos específicos de botão (salvar, voltar) serão aplicados inline usando GlobalCores
   });
+
 
   const handleSaveChanges = () => {
     if (!itemEditavel) return;
+
     const novoValorUnitario = parseFloat(valorUnitarioEditavel.replace(",", ".")) || 0;
+
     const updatedItem: Item = {
       ...itemEditavel,
       texto: nomeEditavel.trim(),
-      valorUnitario: isListaTarefasDetalhes ? itemEditavel.valorUnitario : novoValorUnitario, 
-      valorTotalItem: isListaTarefasDetalhes ? itemEditavel.valorTotalItem : ((itemEditavel.quantidade || 0) * novoValorUnitario),
+      valorUnitario: novoValorUnitario,
+      valorTotalItem: (itemEditavel.quantidade || 0) * novoValorUnitario,
     };
+
     const newListas = todasAsListas.map((lista) => ({
       ...lista,
       itens: lista.itens.map((i) => (i.id === itemId ? updatedItem : i)),
     }));
     setTodasAsListas(newListas);
-    Alert.alert("Sucesso", "Item atualizado!", [{ text: "OK", onPress: () => router.back() }]);
+    showSuccessToast("As alterações no item foram salvas.", "Item Atualizado!");
+    router.back();
   };
-  
+
   const formatCurrency = (value: number | undefined) => {
-    if (typeof value !== 'number' || isNaN(value)) return 'R$ 0,00';
+    if (typeof value !== 'number') return 'R$ 0,00';
     return `R$ ${value.toFixed(2).replace(".", ",").replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.")}`;
   };
 
   const renderNutriments = () => {
-    if (!openFoodFactsDetalhes?.nutriments) return null;
+    if (!openFoodFactsDetalhes?.nutriments) return null; // Modificado para usar openFoodFactsDetalhes
     const { energy_kcal, fat, carbohydrates, proteins } = openFoodFactsDetalhes.nutriments;
     return (
       <>
-        <Text style={styles.label}>Informações Nutricionais (Open Food Facts):</Text>
-        <Text style={styles.valor}>Calorias: {energy_kcal ? `${energy_kcal} kcal` : "N/A"}</Text>
-        <Text style={styles.valor}>Gorduras: {fat ? `${fat} g` : "N/A"}</Text>
-        <Text style={styles.valor}>Carboidratos: {carbohydrates ? `${carbohydrates} g` : "N/A"}</Text>
-        <Text style={styles.valor}>Proteínas: {proteins ? `${proteins} g` : "N/A"}</Text>
+        <Text style={[styles.label, currentThemeStyles.label]}>Informações Nutricionais (Open Food Facts):</Text>
+        <Text style={[styles.valor, currentThemeStyles.valor]}>Calorias: {energy_kcal ? `${energy_kcal} kcal` : "N/A"}</Text>
+        <Text style={[styles.valor, currentThemeStyles.valor]}>Gorduras: {fat ? `${fat} g` : "N/A"}</Text>
+        <Text style={[styles.valor, currentThemeStyles.valor]}>Carboidratos: {carbohydrates ? `${carbohydrates} g` : "N/A"}</Text>
+        <Text style={[styles.valor, currentThemeStyles.valor]}>Proteínas: {proteins ? `${proteins} g` : "N/A"}</Text>
       </>
     );
   };
-  
+
   const nomeOriginalDoProdutoEscaneado = openFoodFactsDetalhes?.product_name_pt ||
                                       openFoodFactsDetalhes?.product_name_en ||
                                       openFoodFactsDetalhes?.product_name;
 
   if (isLoading) {
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, currentThemeStyles.container]}>
             <View style={styles.loadingContainer}>
-                <Text style={styles.loadingText}>Carregando...</Text>
+                <Text style={currentThemeStyles.valor}>Carregando...</Text>
             </View>
         </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
+    <SafeAreaView style={[styles.container, currentThemeStyles.container]}>
+      <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.headerContainer}>
-          <Text style={styles.titulo}>
+          <Text style={[styles.titulo, currentThemeStyles.titulo]}>
             {itemEditavel ? "Editar Item da Lista" : "Detalhes do Produto Escaneado"}
           </Text>
         </View>
 
         {itemEditavel && (
-          <View style={styles.section}>
-            <Text style={styles.label}>Nome do Item:</Text>
+          <View style={[styles.section, currentThemeStyles.section]}>
+            <Text style={[styles.label, currentThemeStyles.label]}>Nome do Item:</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, currentThemeStyles.input]}
               value={nomeEditavel}
               onChangeText={setNomeEditavel}
               placeholder="Nome do item"
               placeholderTextColor={GlobalCores[currentColorScheme].placeholderText}
             />
-            
-            {/* Quantidade foi removida desta tela */}
 
-            {/* Valor Unitário e Total do Item apenas se não for lista de tarefas */}
-            {!isListaTarefasDetalhes && (
+            {/* Quantidade removida desta tela */}
+
+            {/* Valor Unitário e Total do Item apenas se não for lista de tarefas E se itemEditavel existir */}
+            {itemEditavel && !isListaTarefasDetalhes && (
               <>
                 <Text style={styles.label}>Valor Unitário:</Text>
                 <TextInput
@@ -318,8 +353,8 @@ export default function ProductDetailsScreen() {
             </Text>
           </View>
         )}
-        
-        {!itemEditavel && !openFoodFactsDetalhes && ( 
+
+        {!itemEditavel && !openFoodFactsDetalhes && (
             <View style={styles.section}>
                 <Text style={styles.valor}>Nenhum detalhe para exibir.</Text>
             </View>
@@ -334,7 +369,7 @@ export default function ProductDetailsScreen() {
                 Voltar
               </Text>
             </Pressable>
-            {itemEditavel && ( 
+            {itemEditavel && ( // Botão de salvar só aparece se estivermos editando um item da lista
               <Pressable
                 style={[styles.button, {backgroundColor: GlobalCores[currentColorScheme].buttonPrimaryBackground}]}
                 onPress={handleSaveChanges}
@@ -351,3 +386,6 @@ export default function ProductDetailsScreen() {
     </SafeAreaView>
   );
 }
+
+// StyleSheet.create foi movido para cima, após a definição de currentColorScheme
+// para que possa ser usado na definição dos estilos.

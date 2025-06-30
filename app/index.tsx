@@ -11,14 +11,15 @@ import {
   Keyboard,
   Platform,
   ActivityIndicator,
-  Alert,
+  Alert, // Alert ainda será usado para confirmações
 } from "react-native";
 import { ListContext, Item } from "../src/context/ListContext";
 import { ThemeContext } from "../src/context/ThemeContext";
 import AddItemModal from "../src/components/AddItemModal";
 import TotalSummaryModal from "../src/components/TotalSummaryModal";
 import { Ionicons } from "@expo/vector-icons";
-import { Cores } from "../constants/Colors"; // Importar Cores centralizadas
+import { Cores } from "../constants/Colors";
+import { showErrorToast, showInfoToast } from "../src/utils/toastService"; // Importar o serviço de toast
 
 const IconeAdicionar = () => (
   <Text style={{ color: Cores.light.buttonText, fontSize: 24, lineHeight: 24 }}>+</Text>
@@ -55,10 +56,10 @@ export default function CurrentListScreen() {
       listaAtiva &&
       listaAtiva.itens &&
       listaAtiva.itens.length > 0 &&
-      !listaAtiva.isArchived && // Só processa se não estiver já arquivada
+      !listaAtiva.isArchived &&
       listaAtiva.itens.every(item => item.comprado)
     ) {
-      Alert.alert(
+      Alert.alert( // Alert de confirmação permanece Alert.alert
         "Lista Concluída",
         `Todos os itens da lista "${listaAtiva.nome}" foram marcados. Deseja arquivar esta lista?`,
         [
@@ -66,25 +67,21 @@ export default function CurrentListScreen() {
           {
             text: "Sim, Arquivar",
             onPress: () => {
+              const nomeListaArquivada = listaAtiva.nome; // Salva o nome antes que listaAtiva mude
               archiveList(listaAtiva.id);
-              // Após arquivar, encontrar a próxima lista não arquivada para definir como ativa
               const proximaListaAtiva = todasAsListas.find(l => l.id !== listaAtiva.id && !l.isArchived);
               if (proximaListaAtiva) {
                 setListaAtivaId(proximaListaAtiva.id);
               } else {
-                // Se não houver outra lista ativa, pode ir para a tela de listas ou limpar o ID ativo
-                // Isso depende da lógica de criação de lista padrão no ListContext se todas forem arquivadas
-                const algumaListaNaoArquivada = todasAsListas.find(l => !l.isArchived);
+                const algumaListaNaoArquivada = todasAsListas.find(l => !l.isArchived && l.id !== listaAtiva.id);
                 if(algumaListaNaoArquivada){
                     setListaAtivaId(algumaListaNaoArquivada.id);
                 } else {
-                    // Se todas as listas estão arquivadas (incluindo a atual que acabou de ser)
-                    // o ListContext deve lidar com a criação de uma nova lista padrão ou limpar o ID
-                    // Por enquanto, vamos para a tela de listas.
                     router.push("/lists");
                 }
               }
-              Alert.alert("Lista Arquivada", `A lista "${listaAtiva.nome}" foi arquivada.`);
+              // Usar showInfoToast para feedback não bloqueante
+              showInfoToast(`A lista "${nomeListaArquivada}" foi arquivada.`, "Lista Arquivada");
             },
           },
         ],
@@ -227,9 +224,9 @@ export default function CurrentListScreen() {
 
   const buscarProdutoAPI = async (barcode: string) => {
     if (!/^\d{8,13}$/.test(barcode)) {
-      Alert.alert(
-        "Código Inválido",
-        "O código de barras que você escaneou parece inválido. Por favor, verifique se ele contém de 8 a 13 dígitos numéricos e tente novamente."
+      showErrorToast(
+        "O código de barras que você escaneou parece inválido. Por favor, verifique se ele contém de 8 a 13 dígitos numéricos e tente novamente.",
+        "Código Inválido"
       );
       return;
     }
@@ -277,21 +274,21 @@ export default function CurrentListScreen() {
         adicionarItemEscaneado(nomeDoProduto, detalhesProduto);
 
       } else {
-         Alert.alert(
-          "Produto Não Encontrado",
-          "Não encontramos informações para este código de barras em nossa base de dados. Você pode tentar escanear outro produto ou adicioná-lo manualmente à sua lista."
+        showErrorToast(
+          "Não encontramos informações para este código de barras em nossa base de dados. Você pode tentar escanear outro produto ou adicioná-lo manualmente à sua lista.",
+          "Produto Não Encontrado"
         );
       }
     } catch (error: any) {
       if (error.message === "ProdutoNaoEncontrado") {
-         Alert.alert(
-            "Produto Não Encontrado",
-            "Não encontramos informações para este código de barras em nossa base de dados. Você pode tentar escanear outro produto ou adicioná-lo manualmente à sua lista."
-          );
+        showErrorToast(
+          "Não encontramos informações para este código de barras em nossa base de dados. Você pode tentar escanear outro produto ou adicioná-lo manualmente à sua lista.",
+          "Produto Não Encontrado"
+        );
       } else {
-        Alert.alert(
-          "Falha na Busca",
-          "Não foi possível buscar as informações do produto no momento. Verifique sua conexão com a internet e tente novamente."
+        showErrorToast(
+          "Não foi possível buscar as informações do produto no momento. Verifique sua conexão com a internet e tente novamente.",
+          "Falha na Busca"
         );
       }
     } finally {
@@ -301,14 +298,18 @@ export default function CurrentListScreen() {
 
   const adicionarItemEscaneado = (texto: string, detalhes?: any) => {
     if (texto.trim() === "" || !listaAtivaId) {
-      Alert.alert("Erro", "Nenhuma lista ativa selecionada para adicionar o item escaneado.");
+      showErrorToast("Nenhuma lista ativa selecionada para adicionar o item escaneado.", "Erro");
       return;
     }
-    if (!todasAsListas.find(l => l.id === listaAtivaId)) {
-        Alert.alert("Erro", "Lista ativa não encontrada. Selecione uma lista válida.");
+    const listaExiste = todasAsListas.find(l => l.id === listaAtivaId);
+    if (!listaExiste) {
+        showErrorToast("Lista ativa não encontrada. Selecione uma lista válida.", "Erro");
         if (todasAsListas.length > 0) {
-            setListaAtivaId(todasAsListas[0].id);
-            Alert.alert("Aviso", "Nenhuma lista estava ativa. A primeira lista foi selecionada. Tente adicionar o item novamente.");
+            const proximaAtiva = todasAsListas.find(l => !l.isArchived);
+            if (proximaAtiva) {
+                setListaAtivaId(proximaAtiva.id);
+                showInfoToast(`Nenhuma lista estava ativa. "${proximaAtiva.nome}" foi selecionada. Tente adicionar o item novamente.`, "Aviso");
+            }
         }
         return;
     }
