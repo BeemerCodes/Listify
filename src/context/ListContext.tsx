@@ -3,9 +3,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export interface Item {
   id: string;
-  texto: string;
+  texto: string; // Nome do item
   quantidade: number;
+  valorUnitario?: number; // Opcional inicialmente, para itens existentes
+  valorTotalItem?: number; // Calculado: quantidade * valorUnitario, opcional para itens existentes
   comprado: boolean;
+  // O campo 'detalhes' pode ser mantido se houver outros usos, ou removido se não.
+  // Por ora, vou mantê-lo para não quebrar nada inesperado, mas não o usaremos para valor.
   detalhes?: any;
 }
 

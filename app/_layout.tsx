@@ -3,79 +3,37 @@ import React, { useContext } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { ListProvider } from "../src/context/ListContext";
 import { ThemeContext, ThemeProvider } from "../src/context/ThemeContext";
-
-const Cores = {
-  roxoPrincipal: "#8B5CF6",
-  roxoClaro: "#A78BFA",
-  cinzaFundo: "#F3F4F6",
-  cinzaInput: "#E5E7EB",
-  branco: "#FFFFFF",
-  pretoTexto: "#1F2937",
-  cinzaTexto: "#6B7281",
-  vermelhoExcluir: "#EF4444",
-  cinzaFundoEscuro: "#1F2937",
-  brancoEscuro: "#2D3748",
-  pretoTextoEscuro: "#E5E7EB",
-  cinzaTextoEscuro: "#9CA3AF",
-};
-
-interface ThemeStyles {
-  tabBarActiveTintColor: string;
-  tabBarInactiveTintColor: string;
-  tabBarStyle: {
-    backgroundColor: string;
-    borderTopColor: string;
-    borderTopWidth: number;
-    shadowOpacity: number;
-    elevation: number;
-  };
-}
-
-interface ThemeStylesMap {
-  light: ThemeStyles;
-  dark: ThemeStyles;
-}
-
-const themeStyles: ThemeStylesMap = {
-  light: {
-    tabBarActiveTintColor: Cores.roxoPrincipal,
-    tabBarInactiveTintColor: Cores.cinzaTexto,
-    tabBarStyle: {
-      backgroundColor: Cores.branco,
-      borderTopColor: Cores.cinzaInput,
-      borderTopWidth: 1,
-      shadowOpacity: 0.1,
-      elevation: 3,
-    },
-  },
-  dark: {
-    tabBarActiveTintColor: Cores.roxoClaro,
-    tabBarInactiveTintColor: Cores.cinzaTextoEscuro,
-    tabBarStyle: {
-      backgroundColor: "#483D8B",
-      borderTopColor: "#483D8B",
-      borderTopWidth: 0,
-      shadowOpacity: 0.15,
-      elevation: 6,
-    },
-  },
-};
+import { Cores } from "../constants/Colors"; // Importar Cores centralizadas
+import { View } from "react-native"; // Necessário para o componente de loading
 
 function TabsLayout() {
-  const { theme } = useContext(ThemeContext);
+  const { theme, isLoadingTheme } = useContext(ThemeContext); // Adicionado isLoadingTheme
+  const currentColorScheme = theme as keyof typeof Cores;
+
+  // Se o tema ainda está carregando, pode-se retornar um placeholder ou null
+  // para evitar que a UI da Tab pisque com o tema errado.
+  if (isLoadingTheme) {
+    // Você pode retornar um componente de splash screen/loading aqui se desejar
+    // ou null para não renderizar nada até o tema estar pronto.
+    // Por simplicidade, um View vazio ou null.
+    return <View style={{flex: 1, backgroundColor: Cores[currentColorScheme].background }} />;
+    // Alternativamente, para evitar qualquer renderização antes do tema:
+    // return null;
+  }
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor:
-          themeStyles[theme as keyof ThemeStylesMap]
-            .tabBarActiveTintColor,
-        tabBarInactiveTintColor:
-          themeStyles[theme as keyof ThemeStylesMap]
-            .tabBarInactiveTintColor,
-        tabBarStyle:
-          themeStyles[theme as keyof ThemeStylesMap].tabBarStyle,
+        tabBarActiveTintColor: Cores[currentColorScheme].tabIconSelected,
+        tabBarInactiveTintColor: Cores[currentColorScheme].tabIconDefault,
+        tabBarStyle: {
+          backgroundColor: Cores[currentColorScheme].cardBackground, // Usar cardBackground para a tab bar
+          borderTopColor: Cores[currentColorScheme].borderColor,
+          borderTopWidth: 1,
+          shadowOpacity: 0.1, // Pode ser ajustado ou removido se o design for mais flat
+          elevation: 3, // Pode ser ajustado ou removido
+        },
       }}
     >
       <Tabs.Screen
@@ -114,23 +72,16 @@ function TabsLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="+not-found"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="details/[id]"
-        options={{
-          href: null,
-        }}
-      />
+      {/* Telas ocultas */}
+      <Tabs.Screen name="+not-found" options={{ href: null }} />
+      <Tabs.Screen name="details/[id]" options={{ href: null }}/>
     </Tabs>
   );
 }
 
 export default function RootLayout() {
+  // ThemeProvider já está aqui, o que é bom.
+  // ListProvider também está aqui.
   return (
     <ThemeProvider>
       <ListProvider>
