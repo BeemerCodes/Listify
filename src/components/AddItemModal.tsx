@@ -33,6 +33,26 @@ const AddItemModal: React.FC<AddItemModalProps> = ({
   const [valorUnitario, setValorUnitario] = useState("");
   const [valorTotalItem, setValorTotalItem] = useState(0);
 
+  // Encontrar a lista ativa para verificar o nome
+  const listaAtiva = todasAsListas.find(l => l.id === listaId);
+  const isListaTarefas = listaAtiva?.nome.toLowerCase() === "tarefas";
+
+  // Resetar quantidade para 1 se não for lista de tarefas e abrir o modal
+  // ou se mudar de uma lista de tarefas para uma normal enquanto o modal está aberto (caso raro).
+  useEffect(() => {
+    if (visible) {
+      if (isListaTarefas) {
+        setQuantidade("1"); // Ou pode ser "" e não salvar se não preenchido
+      } else {
+        // Se não for lista de tarefas e quantidade estiver vazia ou zerada por algum motivo, resetar para "1"
+        if (!quantidade.trim() || parseFloat(quantidade) === 0) {
+            setQuantidade("1");
+        }
+      }
+    }
+  }, [visible, isListaTarefas]);
+
+
   const styles = StyleSheet.create({
     modalContainer: {
       flex: 1,
@@ -109,21 +129,34 @@ const AddItemModal: React.FC<AddItemModalProps> = ({
   });
 
   useEffect(() => {
-    const quant = parseFloat(quantidade) || 0;
+    // Se for lista de tarefas, o valor total do item não se aplica da mesma forma,
+    // mas manteremos o cálculo caso a quantidade seja usada internamente (ex: 1 por padrão).
+    // Se a quantidade for sempre 1 para tarefas, e valor unitário não for usado, valorTotalItem será 0.
+    const quant = parseFloat(quantidade) || (isListaTarefas ? 1 : 0); // Default 1 para tarefas se campo oculto
     const valor = parseFloat(valorUnitario.replace(",", ".")) || 0;
     setValorTotalItem(quant * valor);
-  }, [quantidade, valorUnitario]);
+  }, [quantidade, valorUnitario, isListaTarefas]);
 
   const handleAddItem = () => {
     if (!nomeItem.trim() || !listaId) {
       return;
     }
+
+    let qtdFinal = parseFloat(quantidade) || 1;
+    if (isListaTarefas) {
+      // Para listas de tarefas, a quantidade pode ser sempre 1, ou 0 se não for relevante.
+      // Vamos usar 1 como padrão implícito, já que o campo não é mostrado.
+      qtdFinal = 1;
+    }
+
+
     const newItem: Item = {
       id: Date.now().toString(),
       texto: nomeItem.trim(),
-      quantidade: parseFloat(quantidade) || 1,
-      valorUnitario: parseFloat(valorUnitario.replace(",", ".")) || 0,
-      valorTotalItem: valorTotalItem,
+      quantidade: qtdFinal,
+      // Valor unitário e total podem ser 0 ou undefined para tarefas, se não aplicável.
+      valorUnitario: isListaTarefas ? 0 : (parseFloat(valorUnitario.replace(",", ".")) || 0),
+      valorTotalItem: isListaTarefas ? 0 : valorTotalItem,
       comprado: false,
     };
     const updatedListas = todasAsListas.map((lista) => {
@@ -170,26 +203,31 @@ const AddItemModal: React.FC<AddItemModalProps> = ({
             onChangeText={setNomeItem}
             autoFocus={true}
           />
-          <TextInput
-            style={styles.input}
-            placeholder="Quantidade"
-            placeholderTextColor={Cores[currentColorScheme].placeholderText}
-            keyboardType="numeric"
-            value={quantidade}
-            onChangeText={setQuantidade}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Valor Unitário (ex: 10,50)"
-            placeholderTextColor={Cores[currentColorScheme].placeholderText}
-            keyboardType="decimal-pad"
-            value={valorUnitario}
-            onChangeText={setValorUnitario}
-          />
-          <Text style={styles.totalItemText}>
-            Total do Item: {formatCurrency(valorTotalItem)}
-          </Text>
-          <View style={styles.buttonContainer}>
+          {!isListaTarefas && (
+            <>
+              <TextInput
+                style={styles.input}
+                placeholder="Quantidade"
+                placeholderTextColor={Cores[currentColorScheme].placeholderText}
+                keyboardType="numeric"
+                value={quantidade}
+                onChangeText={setQuantidade}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Valor Unitário (ex: 10,50)"
+                placeholderTextColor={Cores[currentColorScheme].placeholderText}
+                keyboardType="decimal-pad"
+                value={valorUnitario}
+                onChangeText={setValorUnitario}
+              />
+              <Text style={styles.totalItemText}>
+                Total do Item: {formatCurrency(valorTotalItem)}
+              </Text>
+            </>
+          )}
+          {/* Se for lista de tarefas e os campos acima estiverem ocultos, ajustar margem do container de botões */}
+          <View style={[styles.buttonContainer, isListaTarefas && { marginTop: 20 }]}>
             <Pressable
               style={[styles.button, styles.cancelButton]}
               onPress={resetFieldsAndClose}
