@@ -3,7 +3,6 @@ import React, { useContext } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { ListProvider } from "../src/context/ListContext";
 import { ThemeContext, ThemeProvider } from "../src/context/ThemeContext";
-import { useColorScheme } from "react-native";
 
 const Cores = {
   roxoPrincipal: "#8B5CF6",
@@ -64,21 +63,19 @@ const themeStyles: ThemeStylesMap = {
 
 function TabsLayout() {
   const { theme } = useContext(ThemeContext);
-  const colorScheme = useColorScheme();
-  const currentTheme = theme || colorScheme || "light";
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor:
-          themeStyles[currentTheme as keyof ThemeStylesMap]
+          themeStyles[theme as keyof ThemeStylesMap]
             .tabBarActiveTintColor,
         tabBarInactiveTintColor:
-          themeStyles[currentTheme as keyof ThemeStylesMap]
+          themeStyles[theme as keyof ThemeStylesMap]
             .tabBarInactiveTintColor,
         tabBarStyle:
-          themeStyles[currentTheme as keyof ThemeStylesMap].tabBarStyle,
+          themeStyles[theme as keyof ThemeStylesMap].tabBarStyle,
       }}
     >
       <Tabs.Screen

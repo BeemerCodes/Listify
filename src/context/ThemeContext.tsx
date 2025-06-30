@@ -1,23 +1,20 @@
-import React, { createContext, useState, useEffect } from "react";
-import { useColorScheme } from "react-native";
+import React, { createContext, useState, ReactNode } from "react";
 
-export const ThemeContext = createContext({
+interface ThemeContextType {
+  theme: string;
+  toggleTheme: () => void;
+}
+
+export const ThemeContext = createContext<ThemeContextType>({
   theme: "light",
   toggleTheme: () => {},
 });
 
-export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
-  const systemColorScheme = useColorScheme();
-  const [theme, setTheme] = useState<"light" | "dark">(
-    systemColorScheme || "light"
-  );
-
-  useEffect(() => {
-    setTheme(systemColorScheme || "light");
-  }, [systemColorScheme]);
+export const ThemeProvider = ({ children }: { children: ReactNode }) => {
+  const [theme, setTheme] = useState("light"); // Tema padrão fixo como "light"
 
   const toggleTheme = () => {
-    setTheme(theme === "light" ? "dark" : "light");
+    setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
   };
 
   return (
