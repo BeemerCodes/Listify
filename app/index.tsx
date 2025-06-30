@@ -220,28 +220,84 @@ export default function CurrentListScreen() {
   useEffect(() => {
     const barcode = params.barcode;
     if (barcode && typeof barcode === "string" && barcode.length > 0) {
-      // @ts-ignore
-      buscarProduto(barcode); // buscarProduto não está definido neste escopo, precisaria ser movido ou ajustado
-      router.setParams({ barcode: "" });
+      buscarProdutoAPI(barcode); // Renomeado para buscarProdutoAPI para clareza
+      router.setParams({ barcode: "" }); // Limpa o parâmetro para evitar re-scan automático
     }
   }, [params.barcode]);
 
-  // Definição de buscarProduto (simplificada, pois não está no escopo original do problema de cores)
-  const buscarProduto = async (barcode: string) => {
+  const buscarProdutoAPI = async (barcode: string) => {
     if (!/^\d{8,13}$/.test(barcode)) {
-      Alert.alert("Erro","Código de barras inválido. Deve conter 8 a 13 dígitos numéricos.");
+      Alert.alert(
+        "Código Inválido",
+        "O código de barras que você escaneou parece inválido. Por favor, verifique se ele contém de 8 a 13 dígitos numéricos e tente novamente."
+      );
       return;
     }
-    setLoading(true);
-    // Simular busca e adicionar item
-    // Em uma implementação real, aqui iria a lógica de fetch
-    setTimeout(() => {
-      const nomeDoProduto = `Produto ${barcode}`;
-      adicionarItemEscaneado(nomeDoProduto, { scanned: true });
-      setLoading(false);
-    }, 1000);
-  };
 
+    setLoading(true);
+    const url = `https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name,product_name_en,product_name_pt,generic_name,brands,quantity,image_url`;
+
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "User-Agent": "ListfyApp/1.0 - Mobile App", // Boa prática incluir User-Agent
+          Accept: "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        // Tratar status não-OK de forma mais genérica antes de tentar parsear JSON
+        if (response.status === 404) {
+          throw new Error("ProdutoNaoEncontrado"); // Erro customizado para tratar especificamente
+        }
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const json = await response.json();
+
+      if (json.status === 1 && json.product) {
+        const nomeDoProduto =
+          json.product.product_name_pt ||
+          json.product.product_name_en ||
+          json.product.product_name ||
+          (json.product.brands && json.product.generic_name
+            ? `${json.product.brands} ${json.product.generic_name}`
+            : json.product.brands || json.product.generic_name) ||
+          `Produto ${barcode}`; // Fallback mais informativo
+
+        // Passar apenas os detalhes relevantes para adicionarItemEscaneado
+        const detalhesProduto = {
+            product_name: nomeDoProduto, // Usar o nome já processado
+            brands: json.product.brands,
+            quantity: json.product.quantity,
+            image_url: json.product.image_url,
+            barcode: barcode, // Adicionar o barcode aos detalhes
+        };
+        adicionarItemEscaneado(nomeDoProduto, detalhesProduto);
+
+      } else {
+         Alert.alert(
+          "Produto Não Encontrado",
+          "Não encontramos informações para este código de barras em nossa base de dados. Você pode tentar escanear outro produto ou adicioná-lo manualmente à sua lista."
+        );
+      }
+    } catch (error: any) {
+      if (error.message === "ProdutoNaoEncontrado") {
+         Alert.alert(
+            "Produto Não Encontrado",
+            "Não encontramos informações para este código de barras em nossa base de dados. Você pode tentar escanear outro produto ou adicioná-lo manualmente à sua lista."
+          );
+      } else {
+        Alert.alert(
+          "Falha na Busca",
+          "Não foi possível buscar as informações do produto no momento. Verifique sua conexão com a internet e tente novamente."
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const adicionarItemEscaneado = (texto: string, detalhes?: any) => {
     if (texto.trim() === "" || !listaAtivaId) {

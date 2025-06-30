@@ -27,7 +27,6 @@ interface ListContextType {
   listaAtivaId: string;
   setListaAtivaId: (id: string) => void;
   archiveList: (listId: string) => void; // Nova função
-  // isLoadingContext?: boolean; // Se quisermos expor o isLoading
 }
 
 export const ListContext = createContext<ListContextType>({
@@ -122,11 +121,6 @@ export const ListProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [todasAsListas, listaAtivaId, isLoading]);
 
-  // Adicionar um valor de loading ao contexto pode ser útil para a UI
-  // if (isLoading) {
-  //   return null; // Ou um spinner/splash screen no RootLayout
-  // }
-
   const archiveList = (listId: string) => {
     setTodasAsListas(prevListas =>
       prevListas.map(lista =>
@@ -143,8 +137,7 @@ export const ListProvider = ({ children }: { children: React.ReactNode }) => {
         setTodasAsListas,
         listaAtivaId,
         setListaAtivaId,
-        archiveList, // Expor a nova função
-        // isLoadingContext: isLoading // Se decidir expor
+        archiveList,
       }}
     >
       {children}

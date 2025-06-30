@@ -233,9 +233,13 @@ export default function ListsScreen() {
   };
 
   const handleExcluirLista = (id: string) => {
-    if (todasAsListas.length === 1) {
-      Alert.alert("Atenção", "Não é possível excluir a única lista existente. Crie outra lista antes de excluir esta.");
-      return;
+    if (listasAtivas.length === 1 && !listasAtivas.find(l => l.id !== id)) { // Verifica se é a última lista ATIVA
+      // Se houver listas arquivadas, permite excluir a última ativa.
+      // Apenas impede se for literalmente a ÚNICA lista no geral.
+      if (todasAsListas.length === 1) {
+        Alert.alert("Ação não permitida", "Você precisa ter pelo menos uma lista. Crie uma nova lista antes de tentar excluir esta.");
+        return;
+      }
     }
     Alert.alert(
       "Confirmar Exclusão",
