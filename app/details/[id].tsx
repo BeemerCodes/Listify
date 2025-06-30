@@ -56,19 +56,26 @@ export default function ProductDetailsScreen() {
   const [valorUnitarioEditavel, setValorUnitarioEditavel] = useState("");
   const [valorTotalCalculado, setValorTotalCalculado] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isListaTarefasDetalhes, setIsListaTarefasDetalhes] = useState(false);
 
   useEffect(() => {
     setIsLoading(true);
     let foundItem: Item | undefined;
+    let nomeDaListaDoItem = "";
+
     for (const lista of todasAsListas) {
       foundItem = lista.itens.find((i) => i.id === itemId);
-      if (foundItem) break;
+      if (foundItem) {
+        nomeDaListaDoItem = lista.nome;
+        break;
+      }
     }
 
     if (foundItem) {
       setItemEditavel(foundItem);
       setNomeEditavel(foundItem.texto);
       setValorUnitarioEditavel(foundItem.valorUnitario?.toString().replace(".", ",") || "");
+      setIsListaTarefasDetalhes(nomeDaListaDoItem.toLowerCase() === "tarefas");
     } else if (!openFoodFactsDetalhes) {
       Alert.alert("Erro", "Item não encontrado.", [{ text: "OK", onPress: () => router.back() }]);
     }
@@ -205,23 +212,27 @@ export default function ProductDetailsScreen() {
               placeholderTextColor={currentThemeStyles.input.placeholderTextColor}
             />
 
-            <Text style={[styles.label, currentThemeStyles.label]}>Quantidade:</Text>
-            <Text style={[styles.valor, currentThemeStyles.valor]}>
-              {itemEditavel.quantidade} (Não editável aqui)
-            </Text>
+            {!isListaTarefasDetalhes && (
+              <>
+                <Text style={[styles.label, currentThemeStyles.label]}>Quantidade:</Text>
+                <Text style={[styles.valor, currentThemeStyles.valor]}>
+                  {itemEditavel.quantidade} (Não editável aqui)
+                </Text>
 
-            <Text style={[styles.label, currentThemeStyles.label]}>Valor Unitário:</Text>
-            <TextInput
-              style={[styles.input, currentThemeStyles.input]}
-              value={valorUnitarioEditavel}
-              onChangeText={setValorUnitarioEditavel}
-              placeholder="0,00"
-              placeholderTextColor={currentThemeStyles.input.placeholderTextColor}
-              keyboardType="decimal-pad"
-            />
-            <Text style={[styles.totalItemText, currentThemeStyles.totalItemText]}>
-                Total do Item: {formatCurrency(valorTotalCalculado)}
-            </Text>
+                <Text style={[styles.label, currentThemeStyles.label]}>Valor Unitário:</Text>
+                <TextInput
+                  style={[styles.input, currentThemeStyles.input]}
+                  value={valorUnitarioEditavel}
+                  onChangeText={setValorUnitarioEditavel}
+                  placeholder="0,00"
+                  placeholderTextColor={currentThemeStyles.input.placeholderTextColor}
+                  keyboardType="decimal-pad"
+                />
+                <Text style={[styles.totalItemText, currentThemeStyles.totalItemText]}>
+                    Total do Item: {formatCurrency(valorTotalCalculado)}
+                </Text>
+              </>
+            )}
           </View>
         )}
 
