@@ -6,72 +6,21 @@ import {
   SafeAreaView,
   Pressable,
   Platform,
+  StatusBar, // Importar StatusBar
 } from "react-native";
 import { ThemeContext } from "../src/context/ThemeContext";
-import { Ionicons } from "@expo/vector-icons";
-
-const Cores = {
-  roxoPrincipal: "#8B5CF6",
-  roxoClaro: "#A78BFA",
-  cinzaFundo: "#F3F4F6",
-  cinzaInput: "#E5E7EB",
-  branco: "#FFFFFF",
-  pretoTexto: "#1F2937",
-  cinzaTexto: "#6B7281",
-  vermelhoExcluir: "#EF4444",
-  cinzaFundoEscuro: "#1F2937",
-  brancoEscuro: "#2D3748",
-  pretoTextoEscuro: "#E5E7EB",
-  cinzaTextoEscuro: "#9CA3AF",
-};
-
-interface ThemeStyles {
-  container: { backgroundColor: string };
-  section: { backgroundColor: string; borderColor: string };
-  title: { color: string };
-  label: { color: string };
-  value: { color: string };
-  button: { backgroundColor: string };
-  buttonText: { color: string };
-}
-
-interface ThemeStylesMap {
-  light: ThemeStyles;
-  dark: ThemeStyles;
-}
+import { Cores } from "../constants/Colors"; // Importar Cores centralizadas
 
 export default function SettingsScreen() {
   const { theme, toggleTheme } = useContext(ThemeContext);
+  const currentColorScheme = theme as keyof typeof Cores; // 'light' ou 'dark'
 
-  const themeStyles: ThemeStylesMap = {
-    light: {
-      container: { backgroundColor: Cores.cinzaFundo },
-      section: { backgroundColor: Cores.branco, borderColor: Cores.cinzaInput },
-      title: { color: Cores.pretoTexto },
-      label: { color: Cores.pretoTexto },
-      value: { color: Cores.cinzaTexto },
-      button: { backgroundColor: Cores.roxoPrincipal },
-      buttonText: { color: Cores.branco },
-    },
-    dark: {
-      container: { backgroundColor: Cores.cinzaFundoEscuro },
-      section: {
-        backgroundColor: Cores.brancoEscuro,
-        borderColor: Cores.cinzaTextoEscuro,
-      },
-      title: { color: Cores.pretoTextoEscuro },
-      label: { color: Cores.pretoTextoEscuro },
-      value: { color: Cores.cinzaTextoEscuro },
-      button: { backgroundColor: Cores.roxoClaro },
-      buttonText: { color: Cores.branco },
-    },
-  };
-
+  // Os estilos agora usarão Cores[currentColorScheme].propriedadeDiretamente
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      paddingTop: Platform.OS === "android" ? 25 : 0,
-      ...themeStyles[theme as keyof ThemeStylesMap].container,
+      paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+      backgroundColor: Cores[currentColorScheme].background,
     },
     headerContainer: {
       paddingVertical: 20,
@@ -81,7 +30,7 @@ export default function SettingsScreen() {
       fontSize: 36,
       fontWeight: "bold",
       textAlign: "left",
-      ...themeStyles[theme as keyof ThemeStylesMap].title,
+      color: Cores[currentColorScheme].text,
     },
     section: {
       marginHorizontal: 20,
@@ -89,40 +38,46 @@ export default function SettingsScreen() {
       padding: 15,
       borderRadius: 12,
       borderWidth: 1,
-      shadowColor: "#000",
+      backgroundColor: Cores[currentColorScheme].cardBackground,
+      borderColor: Cores[currentColorScheme].borderColor,
+      shadowColor: "#000", // Sombra pode ser mantida genérica ou ajustada por tema
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
       shadowRadius: 4,
       elevation: 3,
-      ...themeStyles[theme as keyof ThemeStylesMap].section,
     },
     label: {
       fontSize: 18,
       fontWeight: "bold",
       marginTop: 10,
-      ...themeStyles[theme as keyof ThemeStylesMap].label,
+      color: Cores[currentColorScheme].text,
     },
     value: {
       fontSize: 16,
       marginBottom: 5,
-      ...themeStyles[theme as keyof ThemeStylesMap].value,
+      color: Cores[currentColorScheme].textSecondary,
     },
     button: {
-      marginHorizontal: 20,
-      padding: 15,
-      borderRadius: 12,
+      marginTop: 15, // Adicionado para espaçamento
+      paddingVertical: 15, // Aumentado padding
+      borderRadius: 12, // Aumentado borderRadius
       alignItems: "center",
-      ...themeStyles[theme as keyof ThemeStylesMap].button,
+      backgroundColor: Cores[currentColorScheme].buttonPrimaryBackground,
     },
     buttonText: {
       fontSize: 18,
       fontWeight: "bold",
-      ...themeStyles[theme as keyof ThemeStylesMap].buttonText,
+      color: Cores[currentColorScheme].buttonText,
     },
   });
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Adicionar StatusBar para consistência com outras telas */}
+      <StatusBar
+        barStyle={theme === "light" ? "dark-content" : "light-content"}
+        backgroundColor={Cores[currentColorScheme].background}
+      />
       <View style={styles.headerContainer}>
         <Text style={styles.title}>Configurações</Text>
       </View>

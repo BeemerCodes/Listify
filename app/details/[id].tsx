@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useContext } from "react"; // Adiciona useContext
+import React, { useContext, useState, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -9,33 +9,30 @@ import {
   Platform,
   ScrollView,
   Image,
+  TextInput,
+  Alert,
+  KeyboardAvoidingView,
 } from "react-native";
 import { ThemeContext } from "../../src/context/ThemeContext";
-const Cores = {
-  roxoPrincipal: "#8B5CF6",
-  roxoClaro: "#A78BFA",
-  cinzaFundo: "#F3F4F6",
-  branco: "#FFFFFF",
-  pretoTexto: "#1F2937",
-  cinzaTexto: "#6B7281",
-  cinzaBorda: "#E5E7EB",
-  cinzaFundoEscuro: "#1F2937",
-  brancoEscuro: "#2D3748",
-  pretoTextoEscuro: "#E5E7EB",
-  cinzaTextoEscuro: "#9CA3AF",
-};
+import { ListContext, Item } from "../../src/context/ListContext";
+import { Cores as GlobalCores } from "../../constants/Colors"; // Usar Cores de constants/Colors.ts
+import { StatusBar } from "expo-status-bar";
 
-// Interface para os estilos do tema
+// Interface para os estilos do tema (será definida abaixo)
 interface ThemeStyles {
   container: { backgroundColor: string };
   section: { backgroundColor: string; borderColor: string };
   titulo: { color: string };
   label: { color: string };
   valor: { color: string };
-  botao: { backgroundColor: string };
-  textoBotao: { color: string };
+  input: { backgroundColor: string; color: string; borderColor: string; placeholderTextColor: string;};
+  botaoSalvar: { backgroundColor: string };
+  botaoVoltar: { backgroundColor: string };
+  textoBotaoSalvar: { color: string };
+  textoBotaoVoltar: { color: string };
   imagemPlaceholder: { backgroundColor: string };
   placeholderTexto: { color: string };
+  totalItemText: { color: string };
 }
 
 interface ThemeStylesMap {
@@ -46,129 +43,261 @@ interface ThemeStylesMap {
 export default function ProductDetailsScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
-  const { theme } = useContext(ThemeContext); // Obtém o tema atual
-  const detalhes = params.detalhes ? JSON.parse(params.detalhes as string) : {};
+  const { theme } = useContext(ThemeContext);
+  const { todasAsListas, setTodasAsListas } = useContext(ListContext);
 
-  // Define os estilos para os temas claro e escuro
+  const itemId = params.id as string;
+  const openFoodFactsDetalhesJSON = params.itemDetalhesJSON as string | undefined;
+  const openFoodFactsDetalhes = openFoodFactsDetalhesJSON
+    ? JSON.parse(openFoodFactsDetalhesJSON)
+    : null;
+
+  const [itemEditavel, setItemEditavel] = useState<Item | null>(null);
+  const [nomeEditavel, setNomeEditavel] = useState("");
+  const [valorUnitarioEditavel, setValorUnitarioEditavel] = useState("");
+  const [valorTotalCalculado, setValorTotalCalculado] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+
+
+  useEffect(() => {
+    setIsLoading(true);
+    let foundItem: Item | undefined;
+    for (const lista of todasAsListas) {
+      foundItem = lista.itens.find((i) => i.id === itemId);
+      if (foundItem) break;
+    }
+
+    if (foundItem) {
+      setItemEditavel(foundItem);
+      setNomeEditavel(foundItem.texto);
+      // Assegura que valorUnitario seja string e use vírgula como separador decimal para exibição
+      setValorUnitarioEditavel(foundItem.valorUnitario?.toString().replace(".", ",") || "");
+    } else if (!openFoodFactsDetalhes) {
+      // Apenas alerta se não houver nem item da lista nem detalhes OFF
+      Alert.alert("Erro", "Item não encontrado.", [{ text: "OK", onPress: () => router.back() }]);
+    }
+    setIsLoading(false);
+  }, [itemId, todasAsListas, router, openFoodFactsDetalhes]);
+
+  useEffect(() => {
+    const quantidade = itemEditavel?.quantidade || 0;
+    // Converte valorUnitarioEditavel para número, tratando vírgula
+    const valorUnit = parseFloat(valorUnitarioEditavel.replace(",", ".")) || 0;
+    setValorTotalCalculado(quantidade * valorUnit);
+  }, [valorUnitarioEditavel, itemEditavel?.quantidade]);
+
+  const isDarkTheme = theme === "dark";
+
   const themeStyles: ThemeStylesMap = {
     light: {
-      container: { backgroundColor: Cores.cinzaFundo },
-      section: { backgroundColor: Cores.branco, borderColor: Cores.cinzaBorda },
-      titulo: { color: Cores.pretoTexto },
-      label: { color: Cores.pretoTexto },
-      valor: { color: Cores.cinzaTexto },
-      botao: { backgroundColor: Cores.roxoPrincipal },
-      textoBotao: { color: Cores.branco },
-      imagemPlaceholder: { backgroundColor: Cores.cinzaBorda },
-      placeholderTexto: { color: Cores.cinzaTexto },
+      container: { backgroundColor: GlobalCores.cinzaFundo },
+      section: { backgroundColor: GlobalCores.branco, borderColor: GlobalCores.cinzaInput },
+      titulo: { color: GlobalCores.pretoTexto },
+      label: { color: GlobalCores.pretoTexto },
+      valor: { color: GlobalCores.cinzaTexto },
+      input: {
+        backgroundColor: GlobalCores.branco,
+        color: GlobalCores.pretoTexto,
+        borderColor: GlobalCores.cinzaInput,
+        placeholderTextColor: GlobalCores.cinzaTexto,
+      },
+      botaoSalvar: { backgroundColor: GlobalCores.roxoPrincipal },
+      botaoVoltar: { backgroundColor: GlobalCores.cinzaInput },
+      textoBotaoSalvar: { color: GlobalCores.branco },
+      textoBotaoVoltar: { color: GlobalCores.pretoTexto },
+      imagemPlaceholder: { backgroundColor: GlobalCores.cinzaInput },
+      placeholderTexto: { color: GlobalCores.cinzaTexto },
+      totalItemText: { color: GlobalCores.pretoTexto },
     },
     dark: {
-      container: { backgroundColor: Cores.cinzaFundoEscuro },
+      container: { backgroundColor: GlobalCores.cinzaFundoEscuro },
       section: {
-        backgroundColor: Cores.brancoEscuro,
-        borderColor: Cores.cinzaTextoEscuro,
+        backgroundColor: GlobalCores.brancoEscuro,
+        borderColor: GlobalCores.cinzaTextoEscuro,
       },
-      titulo: { color: Cores.pretoTextoEscuro },
-      label: { color: Cores.pretoTextoEscuro },
-      valor: { color: Cores.cinzaTextoEscuro },
-      botao: { backgroundColor: Cores.roxoClaro },
-      textoBotao: { color: Cores.branco },
-      imagemPlaceholder: { backgroundColor: Cores.cinzaTextoEscuro },
-      placeholderTexto: { color: Cores.cinzaTextoEscuro },
+      titulo: { color: GlobalCores.pretoTextoEscuro },
+      label: { color: GlobalCores.pretoTextoEscuro },
+      valor: { color: GlobalCores.cinzaTextoEscuro },
+      input: {
+        backgroundColor: GlobalCores.cinzaInput,
+        color: GlobalCores.pretoTextoEscuro,
+        borderColor: GlobalCores.cinzaTextoEscuro,
+        placeholderTextColor: GlobalCores.cinzaTextoEscuro,
+      },
+      botaoSalvar: { backgroundColor: GlobalCores.roxoClaro },
+      botaoVoltar: { backgroundColor: GlobalCores.cinzaTextoEscuro },
+      textoBotaoSalvar: { color: GlobalCores.branco },
+      textoBotaoVoltar: { color: GlobalCores.pretoTextoEscuro },
+      imagemPlaceholder: { backgroundColor: GlobalCores.cinzaTextoEscuro },
+      placeholderTexto: { color: GlobalCores.cinzaTextoEscuro },
+      totalItemText: { color: GlobalCores.pretoTextoEscuro },
     },
   };
 
-  // Função para formatar nutriments
+  const currentThemeStyles = themeStyles[theme as keyof ThemeStylesMap];
+
+  const handleSaveChanges = () => {
+    if (!itemEditavel) return;
+
+    const novoValorUnitario = parseFloat(valorUnitarioEditavel.replace(",", ".")) || 0;
+
+    const updatedItem: Item = {
+      ...itemEditavel,
+      texto: nomeEditavel.trim(),
+      valorUnitario: novoValorUnitario,
+      valorTotalItem: (itemEditavel.quantidade || 0) * novoValorUnitario,
+    };
+
+    const newListas = todasAsListas.map((lista) => ({
+      ...lista,
+      itens: lista.itens.map((i) => (i.id === itemId ? updatedItem : i)),
+    }));
+    setTodasAsListas(newListas);
+    Alert.alert("Sucesso", "Item atualizado!", [{ text: "OK", onPress: () => router.back() }]);
+  };
+
+  const formatCurrency = (value: number | undefined) => {
+    if (typeof value !== 'number') return 'R$ 0,00';
+    return `R$ ${value.toFixed(2).replace(".", ",").replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.")}`;
+  };
+
   const renderNutriments = () => {
-    if (!detalhes.nutriments) {
-      return (
-        <Text style={[styles.valor, themeStyles[theme as keyof ThemeStylesMap].valor]}>
-          Informações nutricionais não disponíveis
-        </Text>
-      );
-    }
-    const { energy_kcal, fat, carbohydrates, proteins } = detalhes.nutriments;
+    if (!openFoodFactsDetalhes?.nutriments) return null; // Modificado para usar openFoodFactsDetalhes
+    const { energy_kcal, fat, carbohydrates, proteins } = openFoodFactsDetalhes.nutriments;
     return (
       <>
-        <Text style={[styles.valor, themeStyles[theme as keyof ThemeStylesMap].valor]}>
-          Calorias: {energy_kcal ? `${energy_kcal} kcal` : "Não disponível"}
-        </Text>
-        <Text style={[styles.valor, themeStyles[theme as keyof ThemeStylesMap].valor]}>
-          Gorduras: {fat ? `${fat} g` : "Não disponível"}
-        </Text>
-        <Text style={[styles.valor, themeStyles[theme as keyof ThemeStylesMap].valor]}>
-          Carboidratos: {carbohydrates ? `${carbohydrates} g` : "Não disponível"}
-        </Text>
-        <Text style={[styles.valor, themeStyles[theme as keyof ThemeStylesMap].valor]}>
-          Proteínas: {proteins ? `${proteins} g` : "Não disponível"}
-        </Text>
+        <Text style={[styles.label, currentThemeStyles.label]}>Informações Nutricionais (Open Food Facts):</Text>
+        <Text style={[styles.valor, currentThemeStyles.valor]}>Calorias: {energy_kcal ? `${energy_kcal} kcal` : "N/A"}</Text>
+        <Text style={[styles.valor, currentThemeStyles.valor]}>Gorduras: {fat ? `${fat} g` : "N/A"}</Text>
+        <Text style={[styles.valor, currentThemeStyles.valor]}>Carboidratos: {carbohydrates ? `${carbohydrates} g` : "N/A"}</Text>
+        <Text style={[styles.valor, currentThemeStyles.valor]}>Proteínas: {proteins ? `${proteins} g` : "N/A"}</Text>
       </>
     );
   };
 
+  const nomeOriginalDoProdutoEscaneado = openFoodFactsDetalhes?.product_name_pt ||
+                                      openFoodFactsDetalhes?.product_name_en ||
+                                      openFoodFactsDetalhes?.product_name;
+
+  if (isLoading) {
+    return (
+        <SafeAreaView style={[styles.container, currentThemeStyles.container]}>
+            <View style={styles.loadingContainer}>
+                <Text style={currentThemeStyles.valor}>Carregando...</Text>
+            </View>
+        </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView style={[styles.container, themeStyles[theme as keyof ThemeStylesMap].container]}>
+    <SafeAreaView style={[styles.container, currentThemeStyles.container]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.headerContainer}>
-          <Text style={[styles.titulo, themeStyles[theme as keyof ThemeStylesMap].titulo]}>
-            Detalhes do Produto
+          <Text style={[styles.titulo, currentThemeStyles.titulo]}>
+            {itemEditavel ? "Editar Item da Lista" : "Detalhes do Produto Escaneado"}
           </Text>
         </View>
-        <View style={[styles.section, themeStyles[theme as keyof ThemeStylesMap].section]}>
-          {detalhes.image_url ? (
-            <Image
-              source={{ uri: detalhes.image_url }}
-              style={styles.imagemProduto}
-              resizeMode="contain"
+
+        {itemEditavel && (
+          <View style={[styles.section, currentThemeStyles.section]}>
+            <Text style={[styles.label, currentThemeStyles.label]}>Nome do Item:</Text>
+            <TextInput
+              style={[styles.input, currentThemeStyles.input]}
+              value={nomeEditavel}
+              onChangeText={setNomeEditavel}
+              placeholder="Nome do item"
+              placeholderTextColor={currentThemeStyles.input.placeholderTextColor}
             />
-          ) : (
-            <View style={[styles.imagemPlaceholder, themeStyles[theme as keyof ThemeStylesMap].imagemPlaceholder]}>
-              <Text style={[styles.placeholderTexto, themeStyles[theme as keyof ThemeStylesMap].placeholderTexto]}>
-                Sem imagem disponível
-              </Text>
+
+            <Text style={[styles.label, currentThemeStyles.label]}>Quantidade:</Text>
+            <Text style={[styles.valor, currentThemeStyles.valor]}>
+              {itemEditavel.quantidade} (Não editável aqui)
+            </Text>
+
+            <Text style={[styles.label, currentThemeStyles.label]}>Valor Unitário:</Text>
+            <TextInput
+              style={[styles.input, currentThemeStyles.input]}
+              value={valorUnitarioEditavel}
+              onChangeText={setValorUnitarioEditavel}
+              placeholder="0,00"
+              placeholderTextColor={currentThemeStyles.input.placeholderTextColor}
+              keyboardType="decimal-pad"
+            />
+            <Text style={[styles.totalItemText, currentThemeStyles.totalItemText]}>
+                Total do Item: {formatCurrency(valorTotalCalculado)}
+            </Text>
+          </View>
+        )}
+
+        {openFoodFactsDetalhes && (
+          <View style={[styles.section, currentThemeStyles.section]}>
+            <Text style={[styles.tituloH2, currentThemeStyles.titulo]}>
+                {itemEditavel ? "Informações Adicionais (Produto Escaneado)" : "Detalhes do Produto Escaneado"}
+            </Text>
+            {openFoodFactsDetalhes.image_url && (
+              <Image
+                source={{ uri: openFoodFactsDetalhes.image_url }}
+                style={styles.imagemProduto}
+                resizeMode="contain"
+              />
+            )}
+            <Text style={[styles.label, currentThemeStyles.label]}>Nome Original:</Text>
+            <Text style={[styles.valor, currentThemeStyles.valor]}>
+              {nomeOriginalDoProdutoEscaneado || "Não disponível"}
+            </Text>
+            <Text style={[styles.label, currentThemeStyles.label]}>Marca:</Text>
+            <Text style={[styles.valor, currentThemeStyles.valor]}>
+              {openFoodFactsDetalhes.brands || "Não disponível"}
+            </Text>
+            <Text style={[styles.label, currentThemeStyles.label]}>Quantidade (embalagem):</Text>
+            <Text style={[styles.valor, currentThemeStyles.valor]}>
+              {openFoodFactsDetalhes.quantity || "Não disponível"}
+            </Text>
+            {renderNutriments()}
+             <Text style={[styles.label, currentThemeStyles.label]}>Categorias:</Text>
+            <Text style={[styles.valor, currentThemeStyles.valor]}>
+                {openFoodFactsDetalhes.categories || "Não disponível"}
+            </Text>
+            <Text style={[styles.label, currentThemeStyles.label]}>Ingredientes:</Text>
+            <Text style={[styles.valor, currentThemeStyles.valor]}>
+                {openFoodFactsDetalhes.ingredients_text || "Não disponível"}
+            </Text>
+          </View>
+        )}
+
+        {!itemEditavel && !openFoodFactsDetalhes && (
+            <View style={[styles.section, currentThemeStyles.section]}>
+                <Text style={[styles.valor, currentThemeStyles.valor]}>Nenhum detalhe para exibir.</Text>
             </View>
-          )}
+        )}
+
+        <View style={styles.buttonContainer}>
+            <Pressable
+              style={[styles.button, {backgroundColor: currentThemeStyles.botaoVoltar.backgroundColor }]}
+              onPress={() => router.back()}
+            >
+              <Text style={[styles.textoBotao, {color: currentThemeStyles.textoBotaoVoltar.color} ]}>
+                Voltar
+              </Text>
+            </Pressable>
+            {itemEditavel && (
+              <Pressable
+                style={[styles.button, {backgroundColor: currentThemeStyles.botaoSalvar.backgroundColor}]}
+                onPress={handleSaveChanges}
+              >
+                <Text style={[styles.textoBotao, {color: currentThemeStyles.textoBotaoSalvar.color}]}>
+                  Salvar Alterações
+                </Text>
+              </Pressable>
+            )}
         </View>
-        <View style={[styles.section, themeStyles[theme as keyof ThemeStylesMap].section]}>
-          <Text style={[styles.label, themeStyles[theme as keyof ThemeStylesMap].label]}>Marca:</Text>
-          <Text style={[styles.valor, themeStyles[theme as keyof ThemeStylesMap].valor]}>
-            {detalhes.brands || "Não disponível"}
-          </Text>
-          <Text style={[styles.label, themeStyles[theme as keyof ThemeStylesMap].label]}>Nome do Produto:</Text>
-          <Text style={[styles.valor, themeStyles[theme as keyof ThemeStylesMap].valor]}>
-            {detalhes.product_name_pt ||
-              detalhes.product_name_en ||
-              detalhes.product_name ||
-              "Não disponível"}
-          </Text>
-          <Text style={[styles.label, themeStyles[theme as keyof ThemeStylesMap].label]}>Nome Genérico:</Text>
-          <Text style={[styles.valor, themeStyles[theme as keyof ThemeStylesMap].valor]}>
-            {detalhes.generic_name || "Não disponível"}
-          </Text>
-          <Text style={[styles.label, themeStyles[theme as keyof ThemeStylesMap].label]}>Quantidade:</Text>
-          <Text style={[styles.valor, themeStyles[theme as keyof ThemeStylesMap].valor]}>
-            {detalhes.quantity || "Não disponível"}
-          </Text>
-          <Text style={[styles.label, themeStyles[theme as keyof ThemeStylesMap].label]}>Categorias:</Text>
-          <Text style={[styles.valor, themeStyles[theme as keyof ThemeStylesMap].valor]}>
-            {detalhes.categories || "Não disponível"}
-          </Text>
-          <Text style={[styles.label, themeStyles[theme as keyof ThemeStylesMap].label]}>Ingredientes:</Text>
-          <Text style={[styles.valor, themeStyles[theme as keyof ThemeStylesMap].valor]}>
-            {detalhes.ingredients_text || "Não disponível"}
-          </Text>
-          <Text style={[styles.label, themeStyles[theme as keyof ThemeStylesMap].label]}>Informações Nutricionais:</Text>
-          {renderNutriments()}
-        </View>
-        <Pressable
-          style={[styles.botao, themeStyles[theme as keyof ThemeStylesMap].botao]}
-          onPress={() => router.back()}
-        >
-          <Text style={[styles.textoBotao, themeStyles[theme as keyof ThemeStylesMap].textoBotao]}>
-            Voltar
-          </Text>
-        </Pressable>
       </ScrollView>
+      </KeyboardAvoidingView>
+      <StatusBar style={isDarkTheme ? "light" : "dark"} />
     </SafeAreaView>
   );
 }
@@ -176,7 +305,11 @@ export default function ProductDetailsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === "android" ? 25 : 0,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scrollContent: {
     paddingBottom: 20,

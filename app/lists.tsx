@@ -10,120 +10,39 @@ import {
   Modal,
   Alert,
   Platform,
+  StatusBar, // Importar StatusBar
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { ListContext } from "../src/context/ListContext";
+import { ListContext, ListaDeCompras } from "../src/context/ListContext"; // Importar ListaDeCompras
 import { ThemeContext } from "../src/context/ThemeContext";
+import { Cores } from "../constants/Colors"; // Importar Cores centralizadas
 
-const Cores = {
-  roxoPrincipal: "#8B5CF6",
-  roxoClaro: "#A78BFA",
-  cinzaFundo: "#F3F4F6",
-  cinzaInput: "#E5E7EB",
-  branco: "#FFFFFF",
-  pretoTexto: "#1F2937",
-  cinzaTexto: "#6B7281",
-  vermelhoExcluir: "#EF4444",
-  cinzaFundoEscuro: "#1F2937",
-  brancoEscuro: "#2D3748",
-  pretoTextoEscuro: "#E5E7EB",
-  cinzaTextoEscuro: "#9CA3AF",
-};
-
-const IconeAdicionar = () => (
-  <Text style={{ color: Cores.branco, fontSize: 24, lineHeight: 24 }}>+</Text>
+// IconeAdicionar agora usa cores do tema
+const IconeAdicionar = ({ currentTheme }: { currentTheme: 'light' | 'dark' }) => (
+  <Text style={{ color: Cores[currentTheme].buttonText, fontSize: 24, lineHeight: 24 }}>+</Text>
 );
 
-const IconeLixeira = () => (
-  <Text style={{ color: Cores.vermelhoExcluir, fontSize: 20 }}>🗑️</Text>
+// IconeLixeira agora usa cores do tema
+const IconeLixeira = ({ currentTheme }: { currentTheme: 'light' | 'dark' }) => (
+  <Text style={{ color: Cores[currentTheme].destructive, fontSize: 20 }}>🗑️</Text>
 );
-
-interface ThemeStyles {
-  container: { backgroundColor: string };
-  section: { backgroundColor: string; borderColor: string };
-  title: { color: string };
-  label: { color: string };
-  value: { color: string };
-  button: { backgroundColor: string };
-  buttonText: { color: string };
-  modalContainer: { backgroundColor: string };
-  modalContent: { backgroundColor: string };
-  input: { backgroundColor: string; color: string; borderColor: string };
-  itemListaContainer: { backgroundColor: string; borderColor: string };
-  emptyContainer: { backgroundColor: string };
-  placeholderText: { color: string };
-}
-
-interface ThemeStylesMap {
-  light: ThemeStyles;
-  dark: ThemeStyles;
-}
 
 export default function ListsScreen() {
   const { todasAsListas, setTodasAsListas, listaAtivaId, setListaAtivaId } =
     useContext(ListContext);
   const { theme } = useContext(ThemeContext);
+  const currentColorScheme = theme as keyof typeof Cores;
   const router = useRouter();
   const [modalVisivel, setModalVisivel] = useState(false);
   const [nomeLista, setNomeLista] = useState("");
   const [editandoListaId, setEditandoListaId] = useState<string | null>(null);
 
-  const themeStyles: ThemeStylesMap = {
-    light: {
-      container: { backgroundColor: Cores.cinzaFundo },
-      section: { backgroundColor: Cores.branco, borderColor: Cores.cinzaInput },
-      title: { color: Cores.pretoTexto },
-      label: { color: Cores.pretoTexto },
-      value: { color: Cores.cinzaTexto },
-      button: { backgroundColor: Cores.roxoPrincipal },
-      buttonText: { color: Cores.branco },
-      modalContainer: { backgroundColor: "rgba(0,0,0,0.5)" },
-      modalContent: { backgroundColor: Cores.branco },
-      input: {
-        backgroundColor: Cores.branco,
-        color: Cores.pretoTexto,
-        borderColor: Cores.cinzaInput,
-      },
-      itemListaContainer: {
-        backgroundColor: Cores.branco,
-        borderColor: Cores.cinzaInput,
-      },
-      emptyContainer: { backgroundColor: Cores.cinzaFundo },
-      placeholderText: { color: Cores.cinzaTexto },
-    },
-    dark: {
-      container: { backgroundColor: Cores.cinzaFundoEscuro },
-      section: {
-        backgroundColor: Cores.brancoEscuro,
-        borderColor: Cores.cinzaTextoEscuro,
-      },
-      title: { color: Cores.pretoTextoEscuro },
-      label: { color: Cores.pretoTextoEscuro },
-      value: { color: Cores.cinzaTextoEscuro },
-      button: { backgroundColor: Cores.roxoClaro },
-      buttonText: { color: Cores.branco },
-      modalContainer: { backgroundColor: "rgba(255,255,255,0.2)" },
-      modalContent: { backgroundColor: Cores.brancoEscuro },
-      input: {
-        backgroundColor: Cores.brancoEscuro,
-        color: Cores.pretoTextoEscuro,
-        borderColor: Cores.cinzaTextoEscuro,
-      },
-      itemListaContainer: {
-        backgroundColor: Cores.brancoEscuro,
-        borderColor: Cores.cinzaTextoEscuro,
-      },
-      emptyContainer: { backgroundColor: Cores.cinzaFundoEscuro },
-      placeholderText: { color: Cores.cinzaTextoEscuro },
-    },
-  };
-
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      paddingTop: Platform.OS === "android" ? 25 : 0,
-      ...themeStyles[theme as keyof ThemeStylesMap].container,
+      paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+      backgroundColor: Cores[currentColorScheme].background,
     },
     headerContainer: {
       paddingVertical: 20,
@@ -133,24 +52,24 @@ export default function ListsScreen() {
       fontSize: 36,
       fontWeight: "bold",
       textAlign: "left",
-      ...themeStyles[theme as keyof ThemeStylesMap].title,
+      color: Cores[currentColorScheme].text,
     },
     botaoContainer: {
       paddingHorizontal: 20,
       marginBottom: 20,
       alignItems: "flex-end",
     },
-    botao: {
+    botaoAddLista: { // Renomeado para clareza
       width: 55,
       height: 55,
       borderRadius: 12,
       justifyContent: "center",
       alignItems: "center",
-      ...themeStyles[theme as keyof ThemeStylesMap].button,
+      backgroundColor: Cores[currentColorScheme].buttonPrimaryBackground,
       elevation: 8,
     },
     itemListaContainer: {
-      paddingVertical: 10,
+      paddingVertical: 15, // Aumentado
       paddingHorizontal: 15,
       borderRadius: 12,
       marginHorizontal: 20,
@@ -159,17 +78,20 @@ export default function ListsScreen() {
       alignItems: "center",
       justifyContent: "space-between",
       borderWidth: 1,
-      ...themeStyles[theme as keyof ThemeStylesMap].itemListaContainer,
+      backgroundColor: Cores[currentColorScheme].cardBackground,
+      borderColor: Cores[currentColorScheme].borderColor,
     },
-    checkboxArea: {
-      flexDirection: "row",
-      alignItems: "center",
+    itemNomeContainer: { // Renomeado de checkboxArea
       flex: 1,
+      marginRight: 10, // Espaço antes dos botões de ação
     },
     itemListaTexto: {
       fontSize: 18,
-      flexShrink: 1,
-      ...themeStyles[theme as keyof ThemeStylesMap].label,
+      color: Cores[currentColorScheme].text,
+    },
+    itemListaAtivaTexto: { // Estilo para destacar lista ativa
+        fontWeight: 'bold',
+        color: Cores[currentColorScheme].tint,
     },
     acoesItem: {
       flexDirection: "row",
@@ -184,87 +106,96 @@ export default function ListsScreen() {
       alignItems: "center",
       marginTop: 50,
       paddingHorizontal: 20,
-      ...themeStyles[theme as keyof ThemeStylesMap].emptyContainer,
+      // backgroundColor não é mais necessário aqui, o container principal já tem
     },
     emptyTitle: {
       fontSize: 20,
       fontWeight: "bold",
       marginTop: 15,
       marginBottom: 10,
-      ...themeStyles[theme as keyof ThemeStylesMap].title,
+      color: Cores[currentColorScheme].text,
+      textAlign: 'center',
     },
     emptySubtitle: {
       fontSize: 16,
       textAlign: "center",
       marginBottom: 20,
-      ...themeStyles[theme as keyof ThemeStylesMap].value,
+      color: Cores[currentColorScheme].textSecondary,
     },
     botaoCriar: {
       paddingVertical: 15,
       paddingHorizontal: 30,
       borderRadius: 12,
       alignItems: "center",
-      ...themeStyles[theme as keyof ThemeStylesMap].button,
+      backgroundColor: Cores[currentColorScheme].buttonPrimaryBackground,
     },
     textoBotaoCriar: {
       fontSize: 18,
       fontWeight: "bold",
-      ...themeStyles[theme as keyof ThemeStylesMap].buttonText,
+      color: Cores[currentColorScheme].buttonText,
     },
+    // Estilos do Modal
     modalContainer: {
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
-      ...themeStyles[theme as keyof ThemeStylesMap].modalContainer,
+      backgroundColor: "rgba(0,0,0,0.6)", // Overlay mais escuro
     },
     modalContent: {
       borderRadius: 12,
       padding: 20,
-      width: "80%",
+      width: "90%", // Aumentado
+      maxWidth: 400,
       alignItems: "center",
-      ...themeStyles[theme as keyof ThemeStylesMap].modalContent,
+      backgroundColor: Cores[currentColorScheme].cardBackground,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
     },
     modalTitulo: {
-      fontSize: 24,
+      fontSize: 22, // Reduzido
       fontWeight: "bold",
       marginBottom: 20,
-      ...themeStyles[theme as keyof ThemeStylesMap].title,
+      color: Cores[currentColorScheme].text,
     },
-    input: {
+    inputModal: { // Renomeado para clareza
       width: "100%",
       height: 55,
       paddingHorizontal: 20,
-      borderRadius: 12,
+      borderRadius: 8, // Reduzido
       fontSize: 16,
-      marginBottom: 20,
+      marginBottom: 25, // Aumentado
       borderWidth: 1,
-      ...themeStyles[theme as keyof ThemeStylesMap].input,
+      backgroundColor: Cores[currentColorScheme].inputBackground,
+      color: Cores[currentColorScheme].text,
+      borderColor: Cores[currentColorScheme].inputBorder,
     },
-    modalBotoes: {
+    modalBotoesContainer: { // Renomeado
       flexDirection: "row",
       justifyContent: "space-between",
       width: "100%",
     },
-    botaoModal: {
+    modalButton: { // Renomeado
       flex: 1,
-      padding: 15,
-      borderRadius: 12,
+      paddingVertical: 12, // Reduzido
+      borderRadius: 8, // Reduzido
       alignItems: "center",
       marginHorizontal: 5,
     },
-    botaoCancelar: {
-      ...themeStyles[theme as keyof ThemeStylesMap].button,
-      backgroundColor:
-        theme === "light" ? Cores.cinzaInput : Cores.cinzaTextoEscuro,
+    modalCancelarButton: { // Renomeado
+      backgroundColor: Cores[currentColorScheme].buttonSecondaryBackground,
     },
-    botaoSalvar: {
-      ...themeStyles[theme as keyof ThemeStylesMap].button,
+    modalSalvarButton: { // Renomeado
+      backgroundColor: Cores[currentColorScheme].buttonPrimaryBackground,
     },
-    textoBotaoModal: {
+    modalButtonText: { // Renomeado
       fontSize: 16,
       fontWeight: "bold",
-      ...themeStyles[theme as keyof ThemeStylesMap].buttonText,
     },
+    // modalSalvarButtonText herdará de modalButtonText e usará Cores[currentColorScheme].buttonText
+    // modalCancelarButtonText usará Cores[currentColorScheme].buttonSecondaryText
   });
 
   const handleSalvarLista = () => {
@@ -272,21 +203,19 @@ export default function ListsScreen() {
       Alert.alert("Erro", "O nome da lista não pode estar vazio.");
       return;
     }
-
     if (editandoListaId) {
       const novasListas = todasAsListas.map((lista) =>
-        lista.id === editandoListaId ? { ...lista, nome: nomeLista } : lista
+        lista.id === editandoListaId ? { ...lista, nome: nomeLista.trim() } : lista
       );
       setTodasAsListas(novasListas);
     } else {
-      const novaLista = {
+      const novaLista: ListaDeCompras = { // Tipagem explícita
         id: Date.now().toString(),
-        nome: nomeLista,
+        nome: nomeLista.trim(),
         itens: [],
       };
       setTodasAsListas([...todasAsListas, novaLista]);
     }
-
     setNomeLista("");
     setEditandoListaId(null);
     setModalVisivel(false);
@@ -294,13 +223,12 @@ export default function ListsScreen() {
 
   const handleExcluirLista = (id: string) => {
     if (todasAsListas.length === 1) {
-      Alert.alert("Erro", "Não é possível excluir a última lista.");
+      Alert.alert("Atenção", "Não é possível excluir a única lista existente. Crie outra lista antes de excluir esta.");
       return;
     }
-
     Alert.alert(
       "Confirmar Exclusão",
-      "Tem certeza que deseja excluir esta lista?",
+      "Tem certeza que deseja excluir esta lista? Todos os itens contidos nela serão perdidos.",
       [
         { text: "Cancelar", style: "cancel" },
         {
@@ -312,7 +240,7 @@ export default function ListsScreen() {
             );
             setTodasAsListas(novasListas);
             if (listaAtivaId === id) {
-              setListaAtivaId(novasListas[0].id);
+              setListaAtivaId(novasListas.length > 0 ? novasListas[0].id : ""); // Define a primeira como ativa ou nenhuma se não houver mais listas
             }
           },
         },
@@ -320,43 +248,43 @@ export default function ListsScreen() {
     );
   };
 
-  const handleEditarLista = (id: string, nome: string) => {
-    setEditandoListaId(id);
-    setNomeLista(nome);
+  const handleEditarLista = (lista: ListaDeCompras) => { // Recebe o objeto lista
+    setEditandoListaId(lista.id);
+    setNomeLista(lista.nome);
     setModalVisivel(true);
   };
 
   const handleSelecionarLista = (id: string) => {
     setListaAtivaId(id);
-    router.push("/");
+    router.push("/"); // Navega para a tela da lista atual
   };
 
-  const renderLista = ({ item }: { item: { id: string; nome: string } }) => (
+  const renderLista = ({ item }: { item: ListaDeCompras }) => ( // Tipado para ListaDeCompras
     <Pressable
       onPress={() => handleSelecionarLista(item.id)}
       style={styles.itemListaContainer}
     >
-      <View style={styles.checkboxArea}>
-        <Text style={styles.itemListaTexto}>
-          {item.nome} {item.id === listaAtivaId && "(Ativa)"}
+      <View style={styles.itemNomeContainer}>
+        <Text style={[styles.itemListaTexto, item.id === listaAtivaId && styles.itemListaAtivaTexto]}>
+          {item.nome}
         </Text>
       </View>
       <View style={styles.acoesItem}>
         <Pressable
-          onPress={() => handleEditarLista(item.id, item.nome)}
+          onPress={() => handleEditarLista(item)}
           style={styles.botaoAcao}
         >
           <Ionicons
             name="pencil-outline"
-            size={20}
-            color={theme === "light" ? Cores.roxoPrincipal : Cores.roxoClaro}
+            size={22} // Aumentado
+            color={Cores[currentColorScheme].tint} // Usar tint
           />
         </Pressable>
         <Pressable
           onPress={() => handleExcluirLista(item.id)}
           style={[styles.botaoAcao, { marginLeft: 8 }]}
         >
-          <IconeLixeira />
+          <IconeLixeira currentTheme={currentColorScheme} />
         </Pressable>
       </View>
     </Pressable>
@@ -364,19 +292,23 @@ export default function ListsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar
+        barStyle={theme === "light" ? "dark-content" : "light-content"}
+        backgroundColor={Cores[currentColorScheme].background}
+      />
       <View style={styles.headerContainer}>
         <Text style={styles.titulo}>Minhas Listas</Text>
       </View>
       <View style={styles.botaoContainer}>
         <Pressable
-          style={styles.botao}
+          style={styles.botaoAddLista}
           onPress={() => {
             setEditandoListaId(null);
             setNomeLista("");
             setModalVisivel(true);
           }}
         >
-          <IconeAdicionar />
+          <IconeAdicionar currentTheme={currentColorScheme} />
         </Pressable>
       </View>
       <FlatList
@@ -386,15 +318,13 @@ export default function ListsScreen() {
         ListEmptyComponent={() => (
           <View style={styles.emptyContainer}>
             <Ionicons
-              name="file-tray-outline"
-              size={60}
-              color={
-                theme === "light" ? Cores.cinzaTexto : Cores.cinzaTextoEscuro
-              }
+              name="file-tray-stacked-outline" // Ícone diferente
+              size={70} // Aumentado
+              color={Cores[currentColorScheme].textSecondary}
             />
             <Text style={styles.emptyTitle}>Nenhuma lista criada</Text>
             <Text style={styles.emptySubtitle}>
-              Comece criando sua primeira lista de compras!
+              Crie listas para organizar suas compras e tarefas!
             </Text>
             <Pressable
               style={styles.botaoCriar}
@@ -410,10 +340,14 @@ export default function ListsScreen() {
         )}
       />
       <Modal
-        animationType="slide"
+        animationType="fade" // Mudado para fade
         transparent={true}
         visible={modalVisivel}
-        onRequestClose={() => setModalVisivel(false)}
+        onRequestClose={() => {
+            setModalVisivel(false);
+            setEditandoListaId(null); // Resetar ao fechar
+            setNomeLista("");       // Resetar ao fechar
+        }}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
@@ -421,27 +355,30 @@ export default function ListsScreen() {
               {editandoListaId ? "Renomear Lista" : "Nova Lista"}
             </Text>
             <TextInput
-              style={styles.input}
+              style={styles.inputModal}
               placeholder="Nome da lista..."
-              placeholderTextColor={
-                themeStyles[theme as keyof ThemeStylesMap].placeholderText.color
-              }
+              placeholderTextColor={Cores[currentColorScheme].placeholderText}
               value={nomeLista}
               onChangeText={setNomeLista}
               autoFocus={true}
+              onSubmitEditing={handleSalvarLista} // Salvar ao pressionar enter
             />
-            <View style={styles.modalBotoes}>
+            <View style={styles.modalBotoesContainer}>
               <Pressable
-                style={[styles.botaoModal, styles.botaoCancelar]}
-                onPress={() => setModalVisivel(false)}
+                style={[styles.modalButton, styles.modalCancelarButton]}
+                onPress={() => {
+                    setModalVisivel(false);
+                    setEditandoListaId(null);
+                    setNomeLista("");
+                }}
               >
-                <Text style={styles.textoBotaoModal}>Cancelar</Text>
+                <Text style={[styles.modalButtonText, { color: Cores[currentColorScheme].buttonSecondaryText }]}>Cancelar</Text>
               </Pressable>
               <Pressable
-                style={[styles.botaoModal, styles.botaoSalvar]}
+                style={[styles.modalButton, styles.modalSalvarButton]}
                 onPress={handleSalvarLista}
               >
-                <Text style={styles.textoBotaoModal}>Salvar</Text>
+                <Text style={[styles.modalButtonText, { color: Cores[currentColorScheme].buttonText }]}>Salvar</Text>
               </Pressable>
             </View>
           </View>
