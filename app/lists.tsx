@@ -10,33 +10,37 @@ import {
   Modal,
   Alert,
   Platform,
-  StatusBar, // Importar StatusBar
+  StatusBar,
+  ScrollView,
+  TouchableOpacity, // Usar para melhor feedback de longPress
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { ListContext, ListaDeCompras } from "../src/context/ListContext"; // Importar ListaDeCompras
+import { ListContext, ListaDeCompras } from "../src/context/ListContext";
 import { ThemeContext } from "../src/context/ThemeContext";
-import { Cores } from "../constants/Colors"; // Importar Cores centralizadas
+import { Cores } from "../constants/Colors";
+import ViewListItemsModal from "../src/components/ViewListItemsModal"; // Importar o novo modal
 
-// IconeAdicionar agora usa cores do tema
 const IconeAdicionar = ({ currentTheme }: { currentTheme: 'light' | 'dark' }) => (
   <Text style={{ color: Cores[currentTheme].buttonText, fontSize: 24, lineHeight: 24 }}>+</Text>
 );
 
-// IconeLixeira agora usa cores do tema
 const IconeLixeira = ({ currentTheme }: { currentTheme: 'light' | 'dark' }) => (
   <Text style={{ color: Cores[currentTheme].destructive, fontSize: 20 }}>🗑️</Text>
 );
 
 export default function ListsScreen() {
-  const { todasAsListas, setTodasAsListas, listaAtivaId, setListaAtivaId, archiveList } = // Adicionado archiveList, embora não usado diretamente aqui para arquivar.
+  const { todasAsListas, setTodasAsListas, listaAtivaId, setListaAtivaId } =
     useContext(ListContext);
   const { theme } = useContext(ThemeContext);
   const currentColorScheme = theme as keyof typeof Cores;
   const router = useRouter();
-  const [modalVisivel, setModalVisivel] = useState(false);
+
+  const [modalCriarEditarVisivel, setModalCriarEditarVisivel] = useState(false);
   const [nomeLista, setNomeLista] = useState("");
   const [editandoListaId, setEditandoListaId] = useState<string | null>(null);
+
+  const [visualizandoLista, setVisualizandoLista] = useState<ListaDeCompras | null>(null);
 
   const styles = StyleSheet.create({
     container: {
@@ -59,7 +63,7 @@ export default function ListsScreen() {
       marginBottom: 20,
       alignItems: "flex-end",
     },
-    botaoAddLista: { // Renomeado para clareza
+    botaoAddLista: {
       width: 55,
       height: 55,
       borderRadius: 12,
@@ -68,7 +72,7 @@ export default function ListsScreen() {
       backgroundColor: Cores[currentColorScheme].buttonPrimaryBackground,
       elevation: 8,
     },
-    sectionHeader: { // Novo estilo para o cabeçalho da seção
+    sectionHeader: {
       fontSize: 20,
       fontWeight: 'bold',
       color: Cores[currentColorScheme].text,
@@ -89,15 +93,15 @@ export default function ListsScreen() {
       backgroundColor: Cores[currentColorScheme].cardBackground,
       borderColor: Cores[currentColorScheme].borderColor,
     },
-    itemNomeContainer: { // Renomeado de checkboxArea
+    itemNomeContainer: {
       flex: 1,
-      marginRight: 10, // Espaço antes dos botões de ação
+      marginRight: 10,
     },
     itemListaTexto: {
       fontSize: 18,
       color: Cores[currentColorScheme].text,
     },
-    itemListaAtivaTexto: { // Estilo para destacar lista ativa
+    itemListaAtivaTexto: {
         fontWeight: 'bold',
         color: Cores[currentColorScheme].tint,
     },
@@ -112,47 +116,46 @@ export default function ListsScreen() {
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
-      marginTop: 50,
+      marginTop: 20, // Reduzido o marginTop
       paddingHorizontal: 20,
-      // backgroundColor não é mais necessário aqui, o container principal já tem
+      minHeight: 120, // Altura mínima para seções vazias
     },
     emptyTitle: {
-      fontSize: 20,
+      fontSize: 18, // Ajustado
       fontWeight: "bold",
-      marginTop: 15,
-      marginBottom: 10,
+      marginTop: 10, // Ajustado
+      marginBottom: 8, // Ajustado
       color: Cores[currentColorScheme].text,
       textAlign: 'center',
     },
     emptySubtitle: {
-      fontSize: 16,
+      fontSize: 15, // Ajustado
       textAlign: "center",
-      marginBottom: 20,
+      marginBottom: 15, // Ajustado
       color: Cores[currentColorScheme].textSecondary,
     },
     botaoCriar: {
-      paddingVertical: 15,
-      paddingHorizontal: 30,
-      borderRadius: 12,
+      paddingVertical: 12, // Ajustado
+      paddingHorizontal: 25, // Ajustado
+      borderRadius: 10, // Ajustado
       alignItems: "center",
       backgroundColor: Cores[currentColorScheme].buttonPrimaryBackground,
     },
     textoBotaoCriar: {
-      fontSize: 18,
+      fontSize: 16, // Ajustado
       fontWeight: "bold",
       color: Cores[currentColorScheme].buttonText,
     },
-    // Estilos do Modal
     modalContainer: {
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
-      backgroundColor: "rgba(0,0,0,0.6)", // Overlay mais escuro
+      backgroundColor: "rgba(0,0,0,0.6)",
     },
     modalContent: {
       borderRadius: 12,
       padding: 20,
-      width: "90%", // Aumentado
+      width: "90%",
       maxWidth: 400,
       alignItems: "center",
       backgroundColor: Cores[currentColorScheme].cardBackground,
@@ -163,47 +166,45 @@ export default function ListsScreen() {
       elevation: 5,
     },
     modalTitulo: {
-      fontSize: 22, // Reduzido
+      fontSize: 22,
       fontWeight: "bold",
       marginBottom: 20,
       color: Cores[currentColorScheme].text,
     },
-    inputModal: { // Renomeado para clareza
+    inputModal: {
       width: "100%",
       height: 55,
       paddingHorizontal: 20,
-      borderRadius: 8, // Reduzido
+      borderRadius: 8,
       fontSize: 16,
-      marginBottom: 25, // Aumentado
+      marginBottom: 25,
       borderWidth: 1,
       backgroundColor: Cores[currentColorScheme].inputBackground,
       color: Cores[currentColorScheme].text,
       borderColor: Cores[currentColorScheme].inputBorder,
     },
-    modalBotoesContainer: { // Renomeado
+    modalBotoesContainer: {
       flexDirection: "row",
       justifyContent: "space-between",
       width: "100%",
     },
-    modalButton: { // Renomeado
+    modalButton: {
       flex: 1,
-      paddingVertical: 12, // Reduzido
-      borderRadius: 8, // Reduzido
+      paddingVertical: 12,
+      borderRadius: 8,
       alignItems: "center",
       marginHorizontal: 5,
     },
-    modalCancelarButton: { // Renomeado
+    modalCancelarButton: {
       backgroundColor: Cores[currentColorScheme].buttonSecondaryBackground,
     },
-    modalSalvarButton: { // Renomeado
+    modalSalvarButton: {
       backgroundColor: Cores[currentColorScheme].buttonPrimaryBackground,
     },
-    modalButtonText: { // Renomeado
+    modalButtonText: {
       fontSize: 16,
       fontWeight: "bold",
     },
-    // modalSalvarButtonText herdará de modalButtonText e usará Cores[currentColorScheme].buttonText
-    // modalCancelarButtonText usará Cores[currentColorScheme].buttonSecondaryText
   });
 
   const listasAtivas = todasAsListas.filter(lista => !lista.isArchived);
@@ -211,7 +212,7 @@ export default function ListsScreen() {
 
   const handleSalvarLista = () => {
     if (nomeLista.trim() === "") {
-      Alert.alert("Erro", "O nome da lista não pode estar vazio.");
+      Alert.alert("Nome Inválido", "O nome da lista não pode estar vazio.");
       return;
     }
     if (editandoListaId) {
@@ -220,43 +221,37 @@ export default function ListsScreen() {
       );
       setTodasAsListas(novasListas);
     } else {
-      const novaLista: ListaDeCompras = { // Tipagem explícita
+      const novaLista: ListaDeCompras = {
         id: Date.now().toString(),
         nome: nomeLista.trim(),
         itens: [],
+        isArchived: false, // Nova lista nunca começa arquivada
       };
       setTodasAsListas([...todasAsListas, novaLista]);
     }
     setNomeLista("");
     setEditandoListaId(null);
-    setModalVisivel(false);
+    setModalCriarEditarVisivel(false);
   };
 
   const handleExcluirLista = (id: string) => {
-    if (listasAtivas.length === 1 && !listasAtivas.find(l => l.id !== id)) { // Verifica se é a última lista ATIVA
-      // Se houver listas arquivadas, permite excluir a última ativa.
-      // Apenas impede se for literalmente a ÚNICA lista no geral.
-      if (todasAsListas.length === 1) {
-        Alert.alert("Ação não permitida", "Você precisa ter pelo menos uma lista. Crie uma nova lista antes de tentar excluir esta.");
-        return;
-      }
-    }
+    const listaParaExcluir = todasAsListas.find(l => l.id === id);
+    if (!listaParaExcluir) return;
+
+    // Permite excluir mesmo que seja a última lista, o ListContext criará uma padrão se necessário.
+    // No entanto, se for a lista ativa, tentaremos mudar para outra.
     Alert.alert(
       "Confirmar Exclusão",
-      "Tem certeza que deseja excluir esta lista? Todos os itens contidos nela serão perdidos.",
+      `Tem certeza que deseja excluir a lista "${listaParaExcluir.nome}"? Todos os itens contidos nela serão perdidos.`,
       [
         { text: "Cancelar", style: "cancel" },
         {
           text: "Excluir",
           style: "destructive",
           onPress: () => {
-            // Filtrar para remover a lista, não importa se está arquivada ou não
-            const novasListas = todasAsListas.filter(
-              (lista) => lista.id !== id
-            );
+            const novasListas = todasAsListas.filter((lista) => lista.id !== id);
             setTodasAsListas(novasListas);
             if (listaAtivaId === id) {
-              // Se a lista ativa foi excluída, encontrar a próxima lista NÃO ARQUIVADA para definir como ativa
               const proximaListaNaoArquivada = novasListas.find(l => !l.isArchived);
               setListaAtivaId(proximaListaNaoArquivada ? proximaListaNaoArquivada.id : (novasListas.length > 0 ? novasListas[0].id : ""));
             }
@@ -266,44 +261,50 @@ export default function ListsScreen() {
     );
   };
 
-  const handleEditarLista = (lista: ListaDeCompras) => {
+  const handleAbrirModalEditar = (lista: ListaDeCompras) => {
     if (lista.isArchived) {
-      Alert.alert("Atenção", "Listas arquivadas não podem ser editadas. Desarquive primeiro."); // Ou permitir edição, mas manter arquivada.
+      Alert.alert("Atenção", "Listas arquivadas não podem ser editadas diretamente. Por favor, desarquive a lista primeiro se desejar fazer alterações.");
       return;
     }
     setEditandoListaId(lista.id);
     setNomeLista(lista.nome);
-    setModalVisivel(true);
+    setModalCriarEditarVisivel(true);
   };
 
-  const handleSelecionarLista = (lista: ListaDeCompras) => {
-    if (lista.isArchived) {
-      // O que fazer? Permitir visualizar? Ou desarquivar para selecionar?
-      // Por ora, vamos apenas mostrar um alerta e não selecionar.
-      Alert.alert("Lista Arquivada", "Esta lista está arquivada. Para usá-la, você precisará desarquivá-la primeiro (funcionalidade futura).");
-      return;
+  const handleVisualizarItens = (lista: ListaDeCompras) => {
+    // Não seleciona como ativa, apenas abre o modal de visualização
+    setVisualizandoLista(lista);
+  };
+
+  const handleDefinirComoAtiva = (listaId: string) => {
+    const listaSelecionada = todasAsListas.find(l => l.id === listaId);
+    if (listaSelecionada && listaSelecionada.isArchived) {
+        Alert.alert(
+            "Lista Arquivada",
+            "Esta lista está arquivada. Desarquive-a para defini-la como ativa.",
+            [{text: "OK"}]
+        );
+        return;
     }
-    setListaAtivaId(lista.id);
+    setListaAtivaId(listaId);
     router.push("/");
+    Alert.alert("Lista Ativa", `A lista "${listaSelecionada?.nome}" foi definida como ativa.`);
   };
 
-  // Função para desarquivar (a ser chamada por um botão na lista arquivada)
   const handleUnarchiveList = (listId: string) => {
     setTodasAsListas(prevListas =>
       prevListas.map(lista =>
         lista.id === listId ? { ...lista, isArchived: false } : lista
       )
     );
-    // Opcionalmente, definir como lista ativa após desarquivar
-    // setListaAtivaId(listId);
-    // router.push("/");
   };
 
-
   const renderListaItem = ({ item }: { item: ListaDeCompras }) => (
-    <Pressable
-      onPress={() => handleSelecionarLista(item)}
-      style={[styles.itemListaContainer, item.isArchived && { opacity: 0.7 }]} // Estilo para arquivada
+    <TouchableOpacity // Usar TouchableOpacity para feedback de longPress
+      onPress={() => handleVisualizarItens(item)}
+      onLongPress={() => handleDefinirComoAtiva(item.id)}
+      delayLongPress={300} // Tempo para considerar long press
+      style={[styles.itemListaContainer, item.isArchived && { opacity: 0.6 }]}
     >
       <View style={styles.itemNomeContainer}>
         <Text style={[styles.itemListaTexto, item.id === listaAtivaId && !item.isArchived && styles.itemListaAtivaTexto]}>
@@ -311,9 +312,9 @@ export default function ListsScreen() {
         </Text>
       </View>
       <View style={styles.acoesItem}>
-        {!item.isArchived && ( // Botão de editar apenas para não arquivadas
+        {!item.isArchived && (
           <Pressable
-            onPress={() => handleEditarLista(item)}
+            onPress={() => handleAbrirModalEditar(item)}
             style={styles.botaoAcao}
           >
             <Ionicons
@@ -323,39 +324,36 @@ export default function ListsScreen() {
             />
           </Pressable>
         )}
-        {item.isArchived && ( // Botão para desarquivar
+        {item.isArchived && (
            <Pressable
             onPress={() => handleUnarchiveList(item.id)}
             style={styles.botaoAcao}
           >
             <Ionicons
-              name="archive-outline" // Ícone de desarquivar
+              name="archive-outline"
               size={22}
               color={Cores[currentColorScheme].tint}
             />
           </Pressable>
         )}
-        {/* Botão de excluir sempre visível, ou apenas para não arquivadas, ou com confirmação dupla para arquivadas?
-            Por enquanto, sempre visível. A lógica de handleExcluirLista já trata. */}
         <Pressable
           onPress={() => handleExcluirLista(item.id)}
-          style={[styles.botaoAcao, { marginLeft: !item.isArchived || !item.isArchived ? 8 : 0 }]} // Ajusta margin se só houver um botão
+          style={[styles.botaoAcao, { marginLeft: item.isArchived || !item.isArchived ? 8 : 0 }]}
         >
           <IconeLixeira currentTheme={currentColorScheme} />
         </Pressable>
       </View>
-    </Pressable>
+    </TouchableOpacity>
   );
 
-
   const renderEmptyComponent = (isArchivedSection: boolean) => (
-    <View style={[styles.emptyContainer, {minHeight: 150, marginTop: 10, opacity: 0.7}]}>
+    <View style={styles.emptyContainer}>
       <Ionicons
         name={isArchivedSection ? "archive-outline" : "file-tray-outline"}
         size={40}
         color={Cores[currentColorScheme].textSecondary}
       />
-      <Text style={[styles.emptyTitle, {fontSize: 16, marginTop: 8}]}>
+      <Text style={styles.emptyTitle}>
         {isArchivedSection ? "Nenhuma lista arquivada" : "Nenhuma lista ativa"}
       </Text>
       {!isArchivedSection && (
@@ -365,7 +363,6 @@ export default function ListsScreen() {
       )}
     </View>
   );
-
 
   return (
     <SafeAreaView style={styles.container}>
@@ -382,14 +379,13 @@ export default function ListsScreen() {
           onPress={() => {
             setEditandoListaId(null);
             setNomeLista("");
-            setModalVisivel(true);
+            setModalCriarEditarVisivel(true);
           }}
         >
           <IconeAdicionar currentTheme={currentColorScheme} />
         </Pressable>
       </View>
 
-      {/* Usar ScrollView em vez de FlatList para permitir múltiplas FlatLists ou seções facilmente */}
       <ScrollView>
         <Text style={styles.sectionHeader}>Listas Ativas</Text>
         {listasAtivas.length > 0 ? (
@@ -397,7 +393,7 @@ export default function ListsScreen() {
             data={listasAtivas}
             renderItem={renderListaItem}
             keyExtractor={(item) => `ativa-${item.id}`}
-            scrollEnabled={false} // Desabilitar scroll da FlatList interna
+            scrollEnabled={false}
           />
         ) : (
           renderEmptyComponent(false)
@@ -409,21 +405,22 @@ export default function ListsScreen() {
             data={listasArquivadas}
             renderItem={renderListaItem}
             keyExtractor={(item) => `arquivada-${item.id}`}
-            scrollEnabled={false} // Desabilitar scroll da FlatList interna
+            scrollEnabled={false}
           />
         ) : (
           renderEmptyComponent(true)
         )}
       </ScrollView>
 
+      {/* Modal para Criar/Editar Nome da Lista */}
       <Modal
         animationType="fade"
         transparent={true}
-        visible={modalVisivel}
+        visible={modalCriarEditarVisivel}
         onRequestClose={() => {
-            setModalVisivel(false);
-            setEditandoListaId(null); // Resetar ao fechar
-            setNomeLista("");       // Resetar ao fechar
+            setModalCriarEditarVisivel(false);
+            setEditandoListaId(null);
+            setNomeLista("");
         }}
       >
         <View style={styles.modalContainer}>
@@ -438,13 +435,13 @@ export default function ListsScreen() {
               value={nomeLista}
               onChangeText={setNomeLista}
               autoFocus={true}
-              onSubmitEditing={handleSalvarLista} // Salvar ao pressionar enter
+              onSubmitEditing={handleSalvarLista}
             />
             <View style={styles.modalBotoesContainer}>
               <Pressable
                 style={[styles.modalButton, styles.modalCancelarButton]}
                 onPress={() => {
-                    setModalVisivel(false);
+                    setModalCriarEditarVisivel(false);
                     setEditandoListaId(null);
                     setNomeLista("");
                 }}
@@ -461,6 +458,15 @@ export default function ListsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Modal para Visualizar Itens da Lista */}
+      {visualizandoLista && (
+        <ViewListItemsModal
+            visible={!!visualizandoLista}
+            onClose={() => setVisualizandoLista(null)}
+            lista={visualizandoLista}
+        />
+      )}
     </SafeAreaView>
   );
 }
