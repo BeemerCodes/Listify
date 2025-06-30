@@ -31,7 +31,7 @@ const IconeLixeira = ({ currentTheme }: { currentTheme: 'light' | 'dark' }) => (
 export default function CurrentListScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
-  const { todasAsListas, setTodasAsListas, listaAtivaId, setListaAtivaId } =
+  const { todasAsListas, setTodasAsListas, listaAtivaId, setListaAtivaId, archiveList } = // Adicionado archiveList
     useContext(ListContext);
   const { theme } = useContext(ThemeContext); // theme é 'light' ou 'dark'
   const currentColorScheme = theme as keyof typeof Cores;
@@ -41,12 +41,58 @@ export default function CurrentListScreen() {
   const [isSummaryModalVisible, setIsSummaryModalVisible] = useState(false);
 
   const listaAtiva = todasAsListas.find((l) => l.id === listaAtivaId);
+  const isListaTarefas = listaAtiva?.nome.toLowerCase() === "tarefas";
 
   useEffect(() => {
     if (todasAsListas.length > 0 && !listaAtivaId) {
       setListaAtivaId(todasAsListas[0].id);
     }
   }, [todasAsListas, listaAtivaId, setListaAtivaId]);
+
+  // useEffect para verificar se a lista deve ser arquivada
+  useEffect(() => {
+    if (
+      listaAtiva &&
+      listaAtiva.itens &&
+      listaAtiva.itens.length > 0 &&
+      !listaAtiva.isArchived && // Só processa se não estiver já arquivada
+      listaAtiva.itens.every(item => item.comprado)
+    ) {
+      Alert.alert(
+        "Lista Concluída",
+        `Todos os itens da lista "${listaAtiva.nome}" foram marcados. Deseja arquivar esta lista?`,
+        [
+          { text: "Não", style: "cancel" },
+          {
+            text: "Sim, Arquivar",
+            onPress: () => {
+              archiveList(listaAtiva.id);
+              // Após arquivar, encontrar a próxima lista não arquivada para definir como ativa
+              const proximaListaAtiva = todasAsListas.find(l => l.id !== listaAtiva.id && !l.isArchived);
+              if (proximaListaAtiva) {
+                setListaAtivaId(proximaListaAtiva.id);
+              } else {
+                // Se não houver outra lista ativa, pode ir para a tela de listas ou limpar o ID ativo
+                // Isso depende da lógica de criação de lista padrão no ListContext se todas forem arquivadas
+                const algumaListaNaoArquivada = todasAsListas.find(l => !l.isArchived);
+                if(algumaListaNaoArquivada){
+                    setListaAtivaId(algumaListaNaoArquivada.id);
+                } else {
+                    // Se todas as listas estão arquivadas (incluindo a atual que acabou de ser)
+                    // o ListContext deve lidar com a criação de uma nova lista padrão ou limpar o ID
+                    // Por enquanto, vamos para a tela de listas.
+                    router.push("/lists");
+                }
+              }
+              Alert.alert("Lista Arquivada", `A lista "${listaAtiva.nome}" foi arquivada.`);
+            },
+          },
+        ],
+        { cancelable: true }
+      );
+    }
+  }, [listaAtiva, todasAsListas, archiveList, setListaAtivaId, router]);
+
 
   const formatCurrency = (value: number | undefined) => {
     if (typeof value !== 'number' || isNaN(value)) return 'R$ 0,00';
@@ -301,7 +347,8 @@ export default function CurrentListScreen() {
           >
             {item.texto}
           </Text>
-          {(item.valorUnitario !== undefined && item.valorUnitario > 0) || (item.valorTotalItem !== undefined && item.valorTotalItem > 0) ? (
+          {/* Exibir valores apenas se não for lista de tarefas E se houver valores > 0 */}
+          {!isListaTarefas && ((item.valorUnitario !== undefined && item.valorUnitario > 0) || (item.valorTotalItem !== undefined && item.valorTotalItem > 0)) ? (
             <Text style={[styles.itemValoresTexto, item.comprado && styles.itemTextoComprado]}>
               VU: {formatCurrency(item.valorUnitario || 0)} | Total: {formatCurrency(item.valorTotalItem || 0)}
             </Text>
@@ -309,19 +356,23 @@ export default function CurrentListScreen() {
         </View>
       </View>
       <View style={styles.acoesItem}>
-        <Pressable
-          onPress={() => handleMudarQuantidade(item.id, -1)}
-          style={styles.botaoAcao}
-        >
-          <Text style={styles.textoBotaoAcao}>-</Text>
-        </Pressable>
-        <Text style={styles.quantidade}>{item.quantidade}</Text>
-        <Pressable
-          onPress={() => handleMudarQuantidade(item.id, 1)}
-          style={styles.botaoAcao}
-        >
-          <Text style={styles.textoBotaoAcao}>+</Text>
-        </Pressable>
+        {!isListaTarefas && ( // Renderiza controles de quantidade apenas se não for lista de tarefas
+          <>
+            <Pressable
+              onPress={() => handleMudarQuantidade(item.id, -1)}
+              style={styles.botaoAcao}
+            >
+              <Text style={styles.textoBotaoAcao}>-</Text>
+            </Pressable>
+            <Text style={styles.quantidade}>{item.quantidade}</Text>
+            <Pressable
+              onPress={() => handleMudarQuantidade(item.id, 1)}
+              style={styles.botaoAcao}
+            >
+              <Text style={styles.textoBotaoAcao}>+</Text>
+            </Pressable>
+          </>
+        )}
         <Pressable
           onPress={() => handleRemoverItem(item.id)}
           style={[styles.botaoAcao, { marginLeft: 8 }]}
@@ -347,31 +398,53 @@ export default function CurrentListScreen() {
         </View>
       )}
       <View style={styles.headerContainer}>
-        <Text style={styles.titulo}>{listaAtiva?.nome || "Carregando Lista..."}</Text>
+        <Text style={styles.titulo}>
+          {listaAtiva ? (listaAtiva.isArchived ? `${listaAtiva.nome} (Arquivada)` : listaAtiva.nome) : "Carregando Lista..."}
+        </Text>
       </View>
-      <FlatList
-        data={listaAtiva?.itens || []}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        ListEmptyComponent={() =>
-          !loading && (
-            <Text style={styles.listaVaziaTexto}>
-              {listaAtivaId ? "A sua lista está vazia." : "Nenhuma lista selecionada ou criada."}
-            </Text>
-          )
-        }
-        contentContainerStyle={listaAtiva?.itens?.length === 0 ? { flex: 1, justifyContent: 'center' } : {}}
-      />
-      {listaAtiva && listaAtiva.itens && listaAtiva.itens.length > 0 && (
-        <Pressable style={styles.fabSummary} onPress={() => setIsSummaryModalVisible(true)}>
-          <Ionicons name="cash-outline" size={26} color={Cores.light.buttonText} />
-        </Pressable>
+      {/* Adicionar verificação para listaAtiva e se está arquivada antes de renderizar a FlatList e FABs */}
+      {listaAtiva && !listaAtiva.isArchived ? (
+        <>
+          <FlatList
+            data={listaAtiva.itens || []}
+            renderItem={renderItem}
+            keyExtractor={(item) => item.id}
+            ListEmptyComponent={() =>
+              !loading && (
+                <Text style={styles.listaVaziaTexto}>
+                  A sua lista está vazia.
+                </Text>
+              )
+            }
+            contentContainerStyle={listaAtiva.itens?.length === 0 ? { flex: 1, justifyContent: 'center' } : {}}
+          />
+          {listaAtiva.itens && listaAtiva.itens.length > 0 && (
+            <Pressable style={styles.fabSummary} onPress={() => setIsSummaryModalVisible(true)}>
+              <Ionicons name="cash-outline" size={26} color={Cores.light.buttonText} />
+            </Pressable>
+          )}
+          <Pressable style={styles.fab} onPress={() => setIsAddItemModalVisible(true)}>
+            <Ionicons name="add" size={30} color={Cores.light.buttonText} />
+          </Pressable>
+        </>
+      ) : (
+        <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20}}>
+          <Text style={styles.listaVaziaTexto}>
+            {listaAtiva?.isArchived
+              ? `A lista "${listaAtiva.nome}" está arquivada. Selecione ou crie uma nova lista em "Minhas Listas".`
+              : (listaAtivaId ? "Carregando lista..." : "Nenhuma lista selecionada. Visite 'Minhas Listas' para selecionar ou criar uma.")
+            }
+          </Text>
+          {/* Opcional: Botão para navegar para a tela de listas se nenhuma lista ativa não arquivada for encontrada */}
+          {!listaAtiva && !loading && (
+             <Pressable style={[styles.fab, {position: 'relative', marginVertical: 20}]} onPress={() => router.push('/lists')}>
+                <Text style={{color: Cores.light.buttonText, fontSize: 16, fontWeight: 'bold'}}>Ver Listas</Text>
+            </Pressable>
+          )}
+        </View>
       )}
-      <Pressable style={styles.fab} onPress={() => setIsAddItemModalVisible(true)}>
-        <Ionicons name="add" size={30} color={Cores.light.buttonText} />
-      </Pressable>
 
-      {listaAtivaId && listaAtiva && (
+      {listaAtivaId && listaAtiva && !listaAtiva.isArchived && (
         <AddItemModal
           visible={isAddItemModalVisible}
           onClose={() => setIsAddItemModalVisible(false)}
