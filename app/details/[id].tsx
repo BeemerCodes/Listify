@@ -15,10 +15,9 @@ import {
 } from "react-native";
 import { ThemeContext } from "../../src/context/ThemeContext";
 import { ListContext, Item } from "../../src/context/ListContext";
-import { Cores as GlobalCores } from "../../constants/Colors"; // Usar Cores de constants/Colors.ts
+import { Cores as GlobalCores } from "../../constants/Colors";
 import { StatusBar } from "expo-status-bar";
 
-// Interface para os estilos do tema (será definida abaixo)
 interface ThemeStyles {
   container: { backgroundColor: string };
   section: { backgroundColor: string; borderColor: string };
@@ -58,7 +57,6 @@ export default function ProductDetailsScreen() {
   const [valorTotalCalculado, setValorTotalCalculado] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
-
   useEffect(() => {
     setIsLoading(true);
     let foundItem: Item | undefined;
@@ -70,10 +68,8 @@ export default function ProductDetailsScreen() {
     if (foundItem) {
       setItemEditavel(foundItem);
       setNomeEditavel(foundItem.texto);
-      // Assegura que valorUnitario seja string e use vírgula como separador decimal para exibição
       setValorUnitarioEditavel(foundItem.valorUnitario?.toString().replace(".", ",") || "");
     } else if (!openFoodFactsDetalhes) {
-      // Apenas alerta se não houver nem item da lista nem detalhes OFF
       Alert.alert("Erro", "Item não encontrado.", [{ text: "OK", onPress: () => router.back() }]);
     }
     setIsLoading(false);
@@ -81,7 +77,6 @@ export default function ProductDetailsScreen() {
 
   useEffect(() => {
     const quantidade = itemEditavel?.quantidade || 0;
-    // Converte valorUnitarioEditavel para número, tratando vírgula
     const valorUnit = parseFloat(valorUnitarioEditavel.replace(",", ".")) || 0;
     setValorTotalCalculado(quantidade * valorUnit);
   }, [valorUnitarioEditavel, itemEditavel?.quantidade]);
@@ -119,7 +114,7 @@ export default function ProductDetailsScreen() {
       label: { color: GlobalCores.pretoTextoEscuro },
       valor: { color: GlobalCores.cinzaTextoEscuro },
       input: {
-        backgroundColor: GlobalCores.cinzaInput,
+        backgroundColor: GlobalCores.cinzaInput, 
         color: GlobalCores.pretoTextoEscuro,
         borderColor: GlobalCores.cinzaTextoEscuro,
         placeholderTextColor: GlobalCores.cinzaTextoEscuro,
@@ -133,21 +128,18 @@ export default function ProductDetailsScreen() {
       totalItemText: { color: GlobalCores.pretoTextoEscuro },
     },
   };
-
+  
   const currentThemeStyles = themeStyles[theme as keyof ThemeStylesMap];
 
   const handleSaveChanges = () => {
     if (!itemEditavel) return;
-
     const novoValorUnitario = parseFloat(valorUnitarioEditavel.replace(",", ".")) || 0;
-
     const updatedItem: Item = {
       ...itemEditavel,
       texto: nomeEditavel.trim(),
       valorUnitario: novoValorUnitario,
       valorTotalItem: (itemEditavel.quantidade || 0) * novoValorUnitario,
     };
-
     const newListas = todasAsListas.map((lista) => ({
       ...lista,
       itens: lista.itens.map((i) => (i.id === itemId ? updatedItem : i)),
@@ -155,14 +147,14 @@ export default function ProductDetailsScreen() {
     setTodasAsListas(newListas);
     Alert.alert("Sucesso", "Item atualizado!", [{ text: "OK", onPress: () => router.back() }]);
   };
-
+  
   const formatCurrency = (value: number | undefined) => {
     if (typeof value !== 'number') return 'R$ 0,00';
     return `R$ ${value.toFixed(2).replace(".", ",").replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.")}`;
   };
 
   const renderNutriments = () => {
-    if (!openFoodFactsDetalhes?.nutriments) return null; // Modificado para usar openFoodFactsDetalhes
+    if (!openFoodFactsDetalhes?.nutriments) return null;
     const { energy_kcal, fat, carbohydrates, proteins } = openFoodFactsDetalhes.nutriments;
     return (
       <>
@@ -174,7 +166,7 @@ export default function ProductDetailsScreen() {
       </>
     );
   };
-
+  
   const nomeOriginalDoProdutoEscaneado = openFoodFactsDetalhes?.product_name_pt ||
                                       openFoodFactsDetalhes?.product_name_en ||
                                       openFoodFactsDetalhes?.product_name;
@@ -191,7 +183,7 @@ export default function ProductDetailsScreen() {
 
   return (
     <SafeAreaView style={[styles.container, currentThemeStyles.container]}>
-      <KeyboardAvoidingView
+      <KeyboardAvoidingView 
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
@@ -268,8 +260,8 @@ export default function ProductDetailsScreen() {
             </Text>
           </View>
         )}
-
-        {!itemEditavel && !openFoodFactsDetalhes && (
+        
+        {!itemEditavel && !openFoodFactsDetalhes && ( 
             <View style={[styles.section, currentThemeStyles.section]}>
                 <Text style={[styles.valor, currentThemeStyles.valor]}>Nenhum detalhe para exibir.</Text>
             </View>
@@ -312,20 +304,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   scrollContent: {
-    paddingBottom: 20,
+    paddingHorizontal: 20, 
+    paddingBottom: Platform.OS === 'ios' ? 40 : 30, 
   },
   headerContainer: {
     paddingVertical: 20,
-    paddingHorizontal: 20,
   },
   titulo: {
-    fontSize: 36,
+    fontSize: 28,
     fontWeight: "bold",
     textAlign: "left",
   },
+  tituloH2: {
+    fontSize: 22, 
+    fontWeight: "bold",
+    marginTop: 15, 
+    marginBottom: 10, 
+  },
   section: {
-    marginHorizontal: 20,
-    marginBottom: 15,
+    marginBottom: 20, 
     padding: 15,
     borderRadius: 12,
     borderWidth: 1,
@@ -336,39 +333,64 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   label: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "bold",
-    marginTop: 10,
+    marginTop: 12,
+    marginBottom: 4, 
   },
   valor: {
     fontSize: 16,
-    marginBottom: 5,
+    marginBottom: 12, 
+  },
+  input: {
+    paddingHorizontal: 15,
+    paddingVertical: Platform.OS === "ios" ? 15 : 12, 
+    borderRadius: 8,
+    marginBottom: 12, 
+    marginTop: 4, 
+    fontSize: 16,
+    borderWidth: 1,
+  },
+  totalItemText: {
+    fontSize: 17, 
+    marginTop: 10, 
+    marginBottom: 15,
+    textAlign: "right",
+    fontWeight: "600", 
   },
   imagemProduto: {
     width: "100%",
-    height: 200,
+    height: 220, 
     borderRadius: 12,
-    marginBottom: 10,
+    marginBottom: 15, 
   },
   imagemPlaceholder: {
     width: "100%",
-    height: 200,
+    height: 220, 
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 15, 
   },
   placeholderTexto: {
     fontSize: 16,
   },
-  botao: {
-    marginHorizontal: 20,
-    padding: 15,
+  buttonContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between", 
+    marginTop: 20, 
+  },
+  button: {
+    flex: 1, 
+    paddingVertical: 15,
     borderRadius: 12,
     alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 8, 
   },
   textoBotao: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "bold",
+    textAlign: 'center',
   },
 });
