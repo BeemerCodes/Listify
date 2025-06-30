@@ -8,7 +8,7 @@ import {
   Pressable,
   TextInput,
   Modal,
-  Alert, // Manter Alert para confirmações
+  Alert, // Manter Alert para confirmações e feedback original
   Platform,
   StatusBar,
   ScrollView,
@@ -20,7 +20,6 @@ import { ListContext, ListaDeCompras } from "../src/context/ListContext";
 import { ThemeContext } from "../src/context/ThemeContext";
 import { Cores } from "../constants/Colors";
 import ViewListItemsModal from "../src/components/ViewListItemsModal";
-import { showErrorToast, showInfoToast, showSuccessToast } from "../src/utils/toastService";
 
 const IconeAdicionar = ({ currentTheme }: { currentTheme: 'light' | 'dark' }) => (
   <Text style={{ color: Cores[currentTheme].buttonText, fontSize: 24, lineHeight: 24 }}>+</Text>
@@ -212,7 +211,7 @@ export default function ListsScreen() {
 
   const handleSalvarLista = () => {
     if (nomeLista.trim() === "") {
-      showErrorToast("O nome da lista não pode estar vazio.", "Nome Inválido");
+      Alert.alert("Nome Inválido", "O nome da lista não pode estar vazio.");
       return;
     }
     if (editandoListaId) {
@@ -220,7 +219,7 @@ export default function ListsScreen() {
         lista.id === editandoListaId ? { ...lista, nome: nomeLista.trim() } : lista
       );
       setTodasAsListas(novasListas);
-      showSuccessToast("Lista renomeada com sucesso!", "Sucesso");
+      // Alert.alert("Sucesso", "Lista renomeada!"); // Opcional
     } else {
       const novaLista: ListaDeCompras = {
         id: Date.now().toString(),
@@ -229,7 +228,7 @@ export default function ListsScreen() {
         isArchived: false,
       };
       setTodasAsListas([...todasAsListas, novaLista]);
-      showSuccessToast(`Lista "${novaLista.nome}" criada!`, "Sucesso");
+      // Alert.alert("Sucesso", `Lista "${novaLista.nome}" criada!`); // Opcional
     }
     setNomeLista("");
     setEditandoListaId(null);
@@ -241,11 +240,11 @@ export default function ListsScreen() {
     if (!listaParaExcluir) return;
 
     if (todasAsListas.length === 1) {
-      showErrorToast("Você precisa ter pelo menos uma lista. Crie uma nova antes de tentar excluir esta.", "Ação não permitida");
+      Alert.alert("Ação não permitida", "Você precisa ter pelo menos uma lista. Crie uma nova lista antes de tentar excluir esta.");
       return;
     }
 
-    Alert.alert( // Confirmação de exclusão permanece Alert.alert
+    Alert.alert(
       "Confirmar Exclusão",
       `Tem certeza que deseja excluir a lista "${listaParaExcluir.nome}"? Todos os itens contidos nela serão perdidos.`,
       [
@@ -260,7 +259,7 @@ export default function ListsScreen() {
               const proximaListaNaoArquivada = novasListas.find(l => !l.isArchived);
               setListaAtivaId(proximaListaNaoArquivada ? proximaListaNaoArquivada.id : (novasListas.length > 0 ? novasListas[0].id : ""));
             }
-            showInfoToast(`A lista "${listaParaExcluir.nome}" foi excluída.`, "Lista Excluída");
+            // Alert.alert("Lista Excluída", `A lista "${listaParaExcluir.nome}" foi excluída.`); // Opcional
           },
         },
       ]
@@ -269,7 +268,7 @@ export default function ListsScreen() {
 
   const handleAbrirModalEditar = (lista: ListaDeCompras) => {
     if (lista.isArchived) {
-      showInfoToast("Listas arquivadas não podem ser editadas. Por favor, desarquive a lista primeiro.", "Atenção");
+      Alert.alert("Atenção", "Listas arquivadas não podem ser editadas diretamente. Por favor, desarquive a lista primeiro se desejar fazer alterações.");
       return;
     }
     setEditandoListaId(lista.id);
@@ -284,13 +283,13 @@ export default function ListsScreen() {
   const handleDefinirComoAtiva = (listaId: string) => {
     const listaSelecionada = todasAsListas.find(l => l.id === listaId);
     if (listaSelecionada && listaSelecionada.isArchived) {
-        showInfoToast("Esta lista está arquivada. Desarquive-a para torná-la ativa.", "Lista Arquivada");
+        Alert.alert("Lista Arquivada", "Esta lista está arquivada. Desarquive-a para torná-la ativa.");
         return;
     }
     setListaAtivaId(listaId);
     router.push("/");
-    if (listaSelecionada) { // Adicionar verificação se listaSelecionada existe
-        showSuccessToast(`"${listaSelecionada.nome}" é agora sua lista ativa.`, "Lista Ativa");
+    if (listaSelecionada) {
+        Alert.alert("Lista Ativa", `A lista "${listaSelecionada.nome}" foi definida como ativa.`);
     }
   };
 
@@ -302,7 +301,7 @@ export default function ListsScreen() {
       )
     );
     if(lista){
-        showInfoToast(`A lista "${lista.nome}" foi desarquivada.`, "Lista Desarquivada");
+        Alert.alert("Lista Desarquivada", `A lista "${lista.nome}" foi desarquivada.`);
     }
   };
 
@@ -345,7 +344,7 @@ export default function ListsScreen() {
         )}
         <Pressable
           onPress={() => handleExcluirLista(item.id)}
-          style={[styles.botaoAcao, { marginLeft: (item.isArchived || !item.isArchived) ? 8 : 0 }]} // Simplificado
+          style={[styles.botaoAcao, { marginLeft: (item.isArchived || !item.isArchived) ? 8 : 0 }]}
         >
           <IconeLixeira currentTheme={currentColorScheme} />
         </Pressable>
