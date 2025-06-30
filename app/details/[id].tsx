@@ -18,27 +18,6 @@ import { ListContext, Item } from "../../src/context/ListContext";
 import { Cores as GlobalCores } from "../../constants/Colors";
 import { StatusBar } from "expo-status-bar";
 
-interface ThemeStyles {
-  container: { backgroundColor: string };
-  section: { backgroundColor: string; borderColor: string };
-  titulo: { color: string };
-  label: { color: string };
-  valor: { color: string };
-  input: { backgroundColor: string; color: string; borderColor: string; placeholderTextColor: string;};
-  botaoSalvar: { backgroundColor: string };
-  botaoVoltar: { backgroundColor: string };
-  textoBotaoSalvar: { color: string };
-  textoBotaoVoltar: { color: string };
-  imagemPlaceholder: { backgroundColor: string };
-  placeholderTexto: { color: string };
-  totalItemText: { color: string };
-}
-
-interface ThemeStylesMap {
-  light: ThemeStyles;
-  dark: ThemeStyles;
-}
-
 export default function ProductDetailsScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
@@ -57,6 +36,7 @@ export default function ProductDetailsScreen() {
   const [valorTotalCalculado, setValorTotalCalculado] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isListaTarefasDetalhes, setIsListaTarefasDetalhes] = useState(false);
+  const currentColorScheme = theme as keyof typeof GlobalCores;
 
   useEffect(() => {
     setIsLoading(true);
@@ -83,60 +63,129 @@ export default function ProductDetailsScreen() {
   }, [itemId, todasAsListas, router, openFoodFactsDetalhes]);
 
   useEffect(() => {
-    const quantidade = itemEditavel?.quantidade || 0;
+    const quantidade = itemEditavel?.quantidade || 0; 
     const valorUnit = parseFloat(valorUnitarioEditavel.replace(",", ".")) || 0;
     setValorTotalCalculado(quantidade * valorUnit);
   }, [valorUnitarioEditavel, itemEditavel?.quantidade]);
 
-  const isDarkTheme = theme === "dark";
-
-  const themeStyles: ThemeStylesMap = {
-    light: {
-      container: { backgroundColor: GlobalCores.cinzaFundo },
-      section: { backgroundColor: GlobalCores.branco, borderColor: GlobalCores.cinzaInput },
-      titulo: { color: GlobalCores.pretoTexto },
-      label: { color: GlobalCores.pretoTexto },
-      valor: { color: GlobalCores.cinzaTexto },
-      input: {
-        backgroundColor: GlobalCores.branco,
-        color: GlobalCores.pretoTexto,
-        borderColor: GlobalCores.cinzaInput,
-        placeholderTextColor: GlobalCores.cinzaTexto,
-      },
-      botaoSalvar: { backgroundColor: GlobalCores.roxoPrincipal },
-      botaoVoltar: { backgroundColor: GlobalCores.cinzaInput },
-      textoBotaoSalvar: { color: GlobalCores.branco },
-      textoBotaoVoltar: { color: GlobalCores.pretoTexto },
-      imagemPlaceholder: { backgroundColor: GlobalCores.cinzaInput },
-      placeholderTexto: { color: GlobalCores.cinzaTexto },
-      totalItemText: { color: GlobalCores.pretoTexto },
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: GlobalCores[currentColorScheme].background,
     },
-    dark: {
-      container: { backgroundColor: GlobalCores.cinzaFundoEscuro },
-      section: {
-        backgroundColor: GlobalCores.brancoEscuro,
-        borderColor: GlobalCores.cinzaTextoEscuro,
-      },
-      titulo: { color: GlobalCores.pretoTextoEscuro },
-      label: { color: GlobalCores.pretoTextoEscuro },
-      valor: { color: GlobalCores.cinzaTextoEscuro },
-      input: {
-        backgroundColor: GlobalCores.cinzaInput, 
-        color: GlobalCores.pretoTextoEscuro,
-        borderColor: GlobalCores.cinzaTextoEscuro,
-        placeholderTextColor: GlobalCores.cinzaTextoEscuro,
-      },
-      botaoSalvar: { backgroundColor: GlobalCores.roxoClaro },
-      botaoVoltar: { backgroundColor: GlobalCores.cinzaTextoEscuro },
-      textoBotaoSalvar: { color: GlobalCores.branco },
-      textoBotaoVoltar: { color: GlobalCores.pretoTextoEscuro },
-      imagemPlaceholder: { backgroundColor: GlobalCores.cinzaTextoEscuro },
-      placeholderTexto: { color: GlobalCores.cinzaTextoEscuro },
-      totalItemText: { color: GlobalCores.pretoTextoEscuro },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: GlobalCores[currentColorScheme].background,
     },
-  };
-  
-  const currentThemeStyles = themeStyles[theme as keyof ThemeStylesMap];
+    loadingText: {
+        color: GlobalCores[currentColorScheme].text,
+        fontSize: 16,
+    },
+    scrollContent: {
+      paddingHorizontal: 20,
+      paddingBottom: Platform.OS === 'ios' ? 40 : 30,
+    },
+    headerContainer: {
+      paddingVertical: 20,
+    },
+    titulo: {
+      fontSize: 28,
+      fontWeight: "bold",
+      textAlign: "left",
+      color: GlobalCores[currentColorScheme].text,
+    },
+    tituloH2: {
+      fontSize: 22,
+      fontWeight: "bold",
+      marginTop: 15,
+      marginBottom: 10,
+      color: GlobalCores[currentColorScheme].text,
+    },
+    section: {
+      marginBottom: 20,
+      padding: 15,
+      borderRadius: 12,
+      borderWidth: 1,
+      backgroundColor: GlobalCores[currentColorScheme].cardBackground,
+      borderColor: GlobalCores[currentColorScheme].borderColor,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    label: {
+      fontSize: 16,
+      fontWeight: "bold",
+      marginTop: 12,
+      marginBottom: 4,
+      color: GlobalCores[currentColorScheme].text,
+    },
+    valor: {
+      fontSize: 16,
+      marginBottom: 12,
+      color: GlobalCores[currentColorScheme].textSecondary,
+    },
+    input: {
+      paddingHorizontal: 15,
+      paddingVertical: Platform.OS === "ios" ? 15 : 12,
+      borderRadius: 8,
+      marginBottom: 12,
+      marginTop: 4,
+      fontSize: 16,
+      borderWidth: 1,
+      backgroundColor: GlobalCores[currentColorScheme].inputBackground,
+      color: GlobalCores[currentColorScheme].text,
+      borderColor: GlobalCores[currentColorScheme].inputBorder,
+    },
+    totalItemText: {
+      fontSize: 17,
+      marginTop: 10,
+      marginBottom: 15,
+      textAlign: "right",
+      fontWeight: "600",
+      color: GlobalCores[currentColorScheme].text,
+    },
+    imagemProduto: {
+      width: "100%",
+      height: 220,
+      borderRadius: 12,
+      marginBottom: 15,
+    },
+    imagemPlaceholder: {
+      width: "100%",
+      height: 220,
+      borderRadius: 12,
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: 15,
+      backgroundColor: GlobalCores[currentColorScheme].inputBackground,
+    },
+    placeholderTexto: {
+      fontSize: 16,
+      color: GlobalCores[currentColorScheme].textSecondary,
+    },
+    buttonContainer: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginTop: 20,
+    },
+    button: {
+      flex: 1,
+      paddingVertical: 15,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      marginHorizontal: 8,
+    },
+    textoBotao: {
+      fontSize: 16,
+      fontWeight: "bold",
+      textAlign: 'center',
+    },
+  });
 
   const handleSaveChanges = () => {
     if (!itemEditavel) return;
@@ -144,8 +193,8 @@ export default function ProductDetailsScreen() {
     const updatedItem: Item = {
       ...itemEditavel,
       texto: nomeEditavel.trim(),
-      valorUnitario: novoValorUnitario,
-      valorTotalItem: (itemEditavel.quantidade || 0) * novoValorUnitario,
+      valorUnitario: isListaTarefasDetalhes ? itemEditavel.valorUnitario : novoValorUnitario, 
+      valorTotalItem: isListaTarefasDetalhes ? itemEditavel.valorTotalItem : ((itemEditavel.quantidade || 0) * novoValorUnitario),
     };
     const newListas = todasAsListas.map((lista) => ({
       ...lista,
@@ -156,7 +205,7 @@ export default function ProductDetailsScreen() {
   };
   
   const formatCurrency = (value: number | undefined) => {
-    if (typeof value !== 'number') return 'R$ 0,00';
+    if (typeof value !== 'number' || isNaN(value)) return 'R$ 0,00';
     return `R$ ${value.toFixed(2).replace(".", ",").replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.")}`;
   };
 
@@ -165,11 +214,11 @@ export default function ProductDetailsScreen() {
     const { energy_kcal, fat, carbohydrates, proteins } = openFoodFactsDetalhes.nutriments;
     return (
       <>
-        <Text style={[styles.label, currentThemeStyles.label]}>Informações Nutricionais (Open Food Facts):</Text>
-        <Text style={[styles.valor, currentThemeStyles.valor]}>Calorias: {energy_kcal ? `${energy_kcal} kcal` : "N/A"}</Text>
-        <Text style={[styles.valor, currentThemeStyles.valor]}>Gorduras: {fat ? `${fat} g` : "N/A"}</Text>
-        <Text style={[styles.valor, currentThemeStyles.valor]}>Carboidratos: {carbohydrates ? `${carbohydrates} g` : "N/A"}</Text>
-        <Text style={[styles.valor, currentThemeStyles.valor]}>Proteínas: {proteins ? `${proteins} g` : "N/A"}</Text>
+        <Text style={styles.label}>Informações Nutricionais (Open Food Facts):</Text>
+        <Text style={styles.valor}>Calorias: {energy_kcal ? `${energy_kcal} kcal` : "N/A"}</Text>
+        <Text style={styles.valor}>Gorduras: {fat ? `${fat} g` : "N/A"}</Text>
+        <Text style={styles.valor}>Carboidratos: {carbohydrates ? `${carbohydrates} g` : "N/A"}</Text>
+        <Text style={styles.valor}>Proteínas: {proteins ? `${proteins} g` : "N/A"}</Text>
       </>
     );
   };
@@ -180,55 +229,53 @@ export default function ProductDetailsScreen() {
 
   if (isLoading) {
     return (
-        <SafeAreaView style={[styles.container, currentThemeStyles.container]}>
+        <SafeAreaView style={styles.container}>
             <View style={styles.loadingContainer}>
-                <Text style={currentThemeStyles.valor}>Carregando...</Text>
+                <Text style={styles.loadingText}>Carregando...</Text>
             </View>
         </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, currentThemeStyles.container]}>
+    <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView 
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.headerContainer}>
-          <Text style={[styles.titulo, currentThemeStyles.titulo]}>
+          <Text style={styles.titulo}>
             {itemEditavel ? "Editar Item da Lista" : "Detalhes do Produto Escaneado"}
           </Text>
         </View>
 
         {itemEditavel && (
-          <View style={[styles.section, currentThemeStyles.section]}>
-            <Text style={[styles.label, currentThemeStyles.label]}>Nome do Item:</Text>
+          <View style={styles.section}>
+            <Text style={styles.label}>Nome do Item:</Text>
             <TextInput
-              style={[styles.input, currentThemeStyles.input]}
+              style={styles.input}
               value={nomeEditavel}
               onChangeText={setNomeEditavel}
               placeholder="Nome do item"
-              placeholderTextColor={currentThemeStyles.input.placeholderTextColor}
+              placeholderTextColor={GlobalCores[currentColorScheme].placeholderText}
             />
+            
+            {/* Quantidade foi removida desta tela */}
 
+            {/* Valor Unitário e Total do Item apenas se não for lista de tarefas */}
             {!isListaTarefasDetalhes && (
               <>
-                <Text style={[styles.label, currentThemeStyles.label]}>Quantidade:</Text>
-                <Text style={[styles.valor, currentThemeStyles.valor]}>
-                  {itemEditavel.quantidade} (Não editável aqui)
-                </Text>
-
-                <Text style={[styles.label, currentThemeStyles.label]}>Valor Unitário:</Text>
+                <Text style={styles.label}>Valor Unitário:</Text>
                 <TextInput
-                  style={[styles.input, currentThemeStyles.input]}
+                  style={styles.input}
                   value={valorUnitarioEditavel}
                   onChangeText={setValorUnitarioEditavel}
                   placeholder="0,00"
-                  placeholderTextColor={currentThemeStyles.input.placeholderTextColor}
+                  placeholderTextColor={GlobalCores[currentColorScheme].placeholderText}
                   keyboardType="decimal-pad"
                 />
-                <Text style={[styles.totalItemText, currentThemeStyles.totalItemText]}>
+                <Text style={styles.totalItemText}>
                     Total do Item: {formatCurrency(valorTotalCalculado)}
                 </Text>
               </>
@@ -237,8 +284,8 @@ export default function ProductDetailsScreen() {
         )}
 
         {openFoodFactsDetalhes && (
-          <View style={[styles.section, currentThemeStyles.section]}>
-            <Text style={[styles.tituloH2, currentThemeStyles.titulo]}>
+          <View style={styles.section}>
+            <Text style={styles.tituloH2}>
                 {itemEditavel ? "Informações Adicionais (Produto Escaneado)" : "Detalhes do Produto Escaneado"}
             </Text>
             {openFoodFactsDetalhes.image_url && (
@@ -248,51 +295,51 @@ export default function ProductDetailsScreen() {
                 resizeMode="contain"
               />
             )}
-            <Text style={[styles.label, currentThemeStyles.label]}>Nome Original:</Text>
-            <Text style={[styles.valor, currentThemeStyles.valor]}>
+            <Text style={styles.label}>Nome Original:</Text>
+            <Text style={styles.valor}>
               {nomeOriginalDoProdutoEscaneado || "Não disponível"}
             </Text>
-            <Text style={[styles.label, currentThemeStyles.label]}>Marca:</Text>
-            <Text style={[styles.valor, currentThemeStyles.valor]}>
+            <Text style={styles.label}>Marca:</Text>
+            <Text style={styles.valor}>
               {openFoodFactsDetalhes.brands || "Não disponível"}
             </Text>
-            <Text style={[styles.label, currentThemeStyles.label]}>Quantidade (embalagem):</Text>
-            <Text style={[styles.valor, currentThemeStyles.valor]}>
+            <Text style={styles.label}>Quantidade (embalagem):</Text>
+            <Text style={styles.valor}>
               {openFoodFactsDetalhes.quantity || "Não disponível"}
             </Text>
             {renderNutriments()}
-             <Text style={[styles.label, currentThemeStyles.label]}>Categorias:</Text>
-            <Text style={[styles.valor, currentThemeStyles.valor]}>
+             <Text style={styles.label}>Categorias:</Text>
+            <Text style={styles.valor}>
                 {openFoodFactsDetalhes.categories || "Não disponível"}
             </Text>
-            <Text style={[styles.label, currentThemeStyles.label]}>Ingredientes:</Text>
-            <Text style={[styles.valor, currentThemeStyles.valor]}>
+            <Text style={styles.label}>Ingredientes:</Text>
+            <Text style={styles.valor}>
                 {openFoodFactsDetalhes.ingredients_text || "Não disponível"}
             </Text>
           </View>
         )}
         
         {!itemEditavel && !openFoodFactsDetalhes && ( 
-            <View style={[styles.section, currentThemeStyles.section]}>
-                <Text style={[styles.valor, currentThemeStyles.valor]}>Nenhum detalhe para exibir.</Text>
+            <View style={styles.section}>
+                <Text style={styles.valor}>Nenhum detalhe para exibir.</Text>
             </View>
         )}
 
         <View style={styles.buttonContainer}>
             <Pressable
-              style={[styles.button, {backgroundColor: currentThemeStyles.botaoVoltar.backgroundColor }]}
+              style={[styles.button, {backgroundColor: GlobalCores[currentColorScheme].buttonSecondaryBackground }]}
               onPress={() => router.back()}
             >
-              <Text style={[styles.textoBotao, {color: currentThemeStyles.textoBotaoVoltar.color} ]}>
+              <Text style={[styles.textoBotao, {color: GlobalCores[currentColorScheme].buttonSecondaryText} ]}>
                 Voltar
               </Text>
             </Pressable>
-            {itemEditavel && (
+            {itemEditavel && ( 
               <Pressable
-                style={[styles.button, {backgroundColor: currentThemeStyles.botaoSalvar.backgroundColor}]}
+                style={[styles.button, {backgroundColor: GlobalCores[currentColorScheme].buttonPrimaryBackground}]}
                 onPress={handleSaveChanges}
               >
-                <Text style={[styles.textoBotao, {color: currentThemeStyles.textoBotaoSalvar.color}]}>
+                <Text style={[styles.textoBotao, {color: GlobalCores[currentColorScheme].buttonText}]}>
                   Salvar Alterações
                 </Text>
               </Pressable>
@@ -300,108 +347,7 @@ export default function ProductDetailsScreen() {
         </View>
       </ScrollView>
       </KeyboardAvoidingView>
-      <StatusBar style={isDarkTheme ? "light" : "dark"} />
+      <StatusBar style={theme === "dark" ? "light" : "dark"} />
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  scrollContent: {
-    paddingHorizontal: 20, 
-    paddingBottom: Platform.OS === 'ios' ? 40 : 30, 
-  },
-  headerContainer: {
-    paddingVertical: 20,
-  },
-  titulo: {
-    fontSize: 28,
-    fontWeight: "bold",
-    textAlign: "left",
-  },
-  tituloH2: {
-    fontSize: 22, 
-    fontWeight: "bold",
-    marginTop: 15, 
-    marginBottom: 10, 
-  },
-  section: {
-    marginBottom: 20, 
-    padding: 15,
-    borderRadius: 12,
-    borderWidth: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginTop: 12,
-    marginBottom: 4, 
-  },
-  valor: {
-    fontSize: 16,
-    marginBottom: 12, 
-  },
-  input: {
-    paddingHorizontal: 15,
-    paddingVertical: Platform.OS === "ios" ? 15 : 12, 
-    borderRadius: 8,
-    marginBottom: 12, 
-    marginTop: 4, 
-    fontSize: 16,
-    borderWidth: 1,
-  },
-  totalItemText: {
-    fontSize: 17, 
-    marginTop: 10, 
-    marginBottom: 15,
-    textAlign: "right",
-    fontWeight: "600", 
-  },
-  imagemProduto: {
-    width: "100%",
-    height: 220, 
-    borderRadius: 12,
-    marginBottom: 15, 
-  },
-  imagemPlaceholder: {
-    width: "100%",
-    height: 220, 
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 15, 
-  },
-  placeholderTexto: {
-    fontSize: 16,
-  },
-  buttonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between", 
-    marginTop: 20, 
-  },
-  button: {
-    flex: 1, 
-    paddingVertical: 15,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    marginHorizontal: 8, 
-  },
-  textoBotao: {
-    fontSize: 16,
-    fontWeight: "bold",
-    textAlign: 'center',
-  },
-});
