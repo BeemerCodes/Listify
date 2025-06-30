@@ -19,7 +19,7 @@ import AddItemModal from "../src/components/AddItemModal";
 import TotalSummaryModal from "../src/components/TotalSummaryModal";
 import { Ionicons } from "@expo/vector-icons";
 import { Cores } from "../constants/Colors";
-import { showErrorToast, showInfoToast } from "../src/utils/toastService"; // Importar o serviço de toast
+// import { showErrorToast, showInfoToast } from "../src/utils/toastService"; // Remover import do toastService
 
 const IconeAdicionar = () => (
   <Text style={{ color: Cores.light.buttonText, fontSize: 24, lineHeight: 24 }}>+</Text>
@@ -80,8 +80,8 @@ export default function CurrentListScreen() {
                     router.push("/lists");
                 }
               }
-              // Usar showInfoToast para feedback não bloqueante
-              showInfoToast(`A lista "${nomeListaArquivada}" foi arquivada.`, "Lista Arquivada");
+              // Revertido para Alert.alert
+              Alert.alert("Lista Arquivada", `A lista "${nomeListaArquivada}" foi arquivada.`);
             },
           },
         ],
@@ -224,9 +224,9 @@ export default function CurrentListScreen() {
 
   const buscarProdutoAPI = async (barcode: string) => {
     if (!/^\d{8,13}$/.test(barcode)) {
-      showErrorToast(
-        "O código de barras que você escaneou parece inválido. Por favor, verifique se ele contém de 8 a 13 dígitos numéricos e tente novamente.",
-        "Código Inválido"
+      Alert.alert( // Revertido para Alert.alert
+        "Código Inválido",
+        "O código de barras que você escaneou parece inválido. Por favor, verifique se ele contém de 8 a 13 dígitos numéricos e tente novamente."
       );
       return;
     }
@@ -274,21 +274,21 @@ export default function CurrentListScreen() {
         adicionarItemEscaneado(nomeDoProduto, detalhesProduto);
 
       } else {
-        showErrorToast(
-          "Não encontramos informações para este código de barras em nossa base de dados. Você pode tentar escanear outro produto ou adicioná-lo manualmente à sua lista.",
-          "Produto Não Encontrado"
+        Alert.alert( // Revertido para Alert.alert
+          "Produto Não Encontrado",
+          "Não encontramos informações para este código de barras em nossa base de dados. Você pode tentar escanear outro produto ou adicioná-lo manualmente à sua lista."
         );
       }
     } catch (error: any) {
       if (error.message === "ProdutoNaoEncontrado") {
-        showErrorToast(
-          "Não encontramos informações para este código de barras em nossa base de dados. Você pode tentar escanear outro produto ou adicioná-lo manualmente à sua lista.",
-          "Produto Não Encontrado"
-        );
+        Alert.alert( // Revertido para Alert.alert
+            "Produto Não Encontrado",
+            "Não encontramos informações para este código de barras em nossa base de dados. Você pode tentar escanear outro produto ou adicioná-lo manualmente à sua lista."
+          );
       } else {
-        showErrorToast(
-          "Não foi possível buscar as informações do produto no momento. Verifique sua conexão com a internet e tente novamente.",
-          "Falha na Busca"
+        Alert.alert( // Revertido para Alert.alert
+          "Falha na Busca",
+          "Não foi possível buscar as informações do produto no momento. Verifique sua conexão com a internet e tente novamente."
         );
       }
     } finally {
@@ -298,17 +298,17 @@ export default function CurrentListScreen() {
 
   const adicionarItemEscaneado = (texto: string, detalhes?: any) => {
     if (texto.trim() === "" || !listaAtivaId) {
-      showErrorToast("Nenhuma lista ativa selecionada para adicionar o item escaneado.", "Erro");
+      Alert.alert("Erro", "Nenhuma lista ativa selecionada para adicionar o item escaneado."); // Revertido
       return;
     }
     const listaExiste = todasAsListas.find(l => l.id === listaAtivaId);
     if (!listaExiste) {
-        showErrorToast("Lista ativa não encontrada. Selecione uma lista válida.", "Erro");
+        Alert.alert("Erro", "Lista ativa não encontrada. Selecione uma lista válida."); // Revertido
         if (todasAsListas.length > 0) {
             const proximaAtiva = todasAsListas.find(l => !l.isArchived);
             if (proximaAtiva) {
                 setListaAtivaId(proximaAtiva.id);
-                showInfoToast(`Nenhuma lista estava ativa. "${proximaAtiva.nome}" foi selecionada. Tente adicionar o item novamente.`, "Aviso");
+                Alert.alert("Aviso", `Nenhuma lista estava ativa. "${proximaAtiva.nome}" foi selecionada. Tente adicionar o item novamente.`); // Revertido
             }
         }
         return;

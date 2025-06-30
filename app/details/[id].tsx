@@ -17,7 +17,7 @@ import { ThemeContext } from "../../src/context/ThemeContext";
 import { ListContext, Item } from "../../src/context/ListContext";
 import { Cores as GlobalCores } from "../../constants/Colors";
 import { StatusBar } from "expo-status-bar";
-import { showSuccessToast, showErrorToast } from "../../src/utils/toastService"; // Importar toasts
+// import { showSuccessToast, showErrorToast } from "../../src/utils/toastService"; // Remover toasts
 
 // Interface para os estilos do tema (será definida abaixo)
 interface ThemeStyles {
@@ -81,8 +81,8 @@ export default function ProductDetailsScreen() {
       setValorUnitarioEditavel(foundItem.valorUnitario?.toString().replace(".", ",") || "");
       setIsListaTarefasDetalhes(nomeDaListaDoItem.toLowerCase() === "tarefas");
     } else if (!openFoodFactsDetalhes) {
-      showErrorToast("Item não encontrado em suas listas.", "Erro");
-      router.back(); // Voltar se o item não for encontrado
+      Alert.alert("Erro", "Item não encontrado em suas listas.", [{ text: "OK", onPress: () => router.back() }]); // Revertido
+      // router.back(); // Chamado dentro do Alert agora
     }
     setIsLoading(false);
   }, [itemId, todasAsListas, router, openFoodFactsDetalhes]);
@@ -235,8 +235,8 @@ export default function ProductDetailsScreen() {
       itens: lista.itens.map((i) => (i.id === itemId ? updatedItem : i)),
     }));
     setTodasAsListas(newListas);
-    showSuccessToast("As alterações no item foram salvas.", "Item Atualizado!");
-    router.back();
+    Alert.alert("Sucesso", "As alterações no item foram salvas.", [{ text: "OK", onPress: () => router.back() }]); // Revertido
+    // router.back(); // Chamado dentro do Alert agora
   };
 
   const formatCurrency = (value: number | undefined) => {
@@ -245,15 +245,16 @@ export default function ProductDetailsScreen() {
   };
 
   const renderNutriments = () => {
-    if (!openFoodFactsDetalhes?.nutriments) return null; // Modificado para usar openFoodFactsDetalhes
+    if (!openFoodFactsDetalhes?.nutriments) return null;
     const { energy_kcal, fat, carbohydrates, proteins } = openFoodFactsDetalhes.nutriments;
+    // Usar styles.label e styles.valor diretamente, pois já são dinâmicos
     return (
       <>
-        <Text style={[styles.label, currentThemeStyles.label]}>Informações Nutricionais (Open Food Facts):</Text>
-        <Text style={[styles.valor, currentThemeStyles.valor]}>Calorias: {energy_kcal ? `${energy_kcal} kcal` : "N/A"}</Text>
-        <Text style={[styles.valor, currentThemeStyles.valor]}>Gorduras: {fat ? `${fat} g` : "N/A"}</Text>
-        <Text style={[styles.valor, currentThemeStyles.valor]}>Carboidratos: {carbohydrates ? `${carbohydrates} g` : "N/A"}</Text>
-        <Text style={[styles.valor, currentThemeStyles.valor]}>Proteínas: {proteins ? `${proteins} g` : "N/A"}</Text>
+        <Text style={styles.label}>Informações Nutricionais (Open Food Facts):</Text>
+        <Text style={styles.valor}>Calorias: {energy_kcal ? `${energy_kcal} kcal` : "N/A"}</Text>
+        <Text style={styles.valor}>Gorduras: {fat ? `${fat} g` : "N/A"}</Text>
+        <Text style={styles.valor}>Carboidratos: {carbohydrates ? `${carbohydrates} g` : "N/A"}</Text>
+        <Text style={styles.valor}>Proteínas: {proteins ? `${proteins} g` : "N/A"}</Text>
       </>
     );
   };
@@ -264,32 +265,37 @@ export default function ProductDetailsScreen() {
 
   if (isLoading) {
     return (
-        <SafeAreaView style={[styles.container, currentThemeStyles.container]}>
+        // Usar styles.container e styles.loadingText (ou styles.valor para consistência)
+        <SafeAreaView style={styles.container}>
             <View style={styles.loadingContainer}>
-                <Text style={currentThemeStyles.valor}>Carregando...</Text>
+                <Text style={styles.loadingText}>Carregando...</Text>
             </View>
         </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, currentThemeStyles.container]}>
+    // Usar styles.container diretamente
+    <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.headerContainer}>
-          <Text style={[styles.titulo, currentThemeStyles.titulo]}>
+          {/* Usar styles.titulo diretamente */}
+          <Text style={styles.titulo}>
             {itemEditavel ? "Editar Item da Lista" : "Detalhes do Produto Escaneado"}
           </Text>
         </View>
 
         {itemEditavel && (
-          <View style={[styles.section, currentThemeStyles.section]}>
-            <Text style={[styles.label, currentThemeStyles.label]}>Nome do Item:</Text>
+          // Usar styles.section diretamente
+          <View style={styles.section}>
+            {/* Usar styles.label e styles.input diretamente */}
+            <Text style={styles.label}>Nome do Item:</Text>
             <TextInput
-              style={[styles.input, currentThemeStyles.input]}
+              style={styles.input}
               value={nomeEditavel}
               onChangeText={setNomeEditavel}
               placeholder="Nome do item"
