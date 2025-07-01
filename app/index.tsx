@@ -18,7 +18,7 @@ import { ThemeContext } from "../src/context/ThemeContext";
 import AddItemModal from "../src/components/AddItemModal";
 import TotalSummaryModal from "../src/components/TotalSummaryModal";
 import { Ionicons } from "@expo/vector-icons";
-import { Cores } from "../constants/Colors"; // Importar Cores centralizadas
+import { Cores } from "../constants/Colors";
 
 const IconeAdicionar = () => (
   <Text style={{ color: Cores.light.buttonText, fontSize: 24, lineHeight: 24 }}>+</Text>
@@ -31,9 +31,9 @@ const IconeLixeira = ({ currentTheme }: { currentTheme: 'light' | 'dark' }) => (
 export default function CurrentListScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
-  const { todasAsListas, setTodasAsListas, listaAtivaId, setListaAtivaId, archiveList } = // Adicionado archiveList
+  const { todasAsListas, setTodasAsListas, listaAtivaId, setListaAtivaId, archiveList } =
     useContext(ListContext);
-  const { theme } = useContext(ThemeContext); // theme é 'light' ou 'dark'
+  const { theme } = useContext(ThemeContext);
   const currentColorScheme = theme as keyof typeof Cores;
 
   const [loading, setLoading] = useState(false);
@@ -44,20 +44,22 @@ export default function CurrentListScreen() {
   const isListaTarefas = listaAtiva?.nome.toLowerCase() === "tarefas";
 
   useEffect(() => {
+    console.log("[IndexScreen] useEffect - Verificando listaAtivaId inicial. Todas as listas count:", todasAsListas.length, "Lista Ativa ID:", listaAtivaId);
     if (todasAsListas.length > 0 && !listaAtivaId) {
+      console.log("[IndexScreen] Definindo primeira lista como ativa:", todasAsListas[0].id);
       setListaAtivaId(todasAsListas[0].id);
     }
   }, [todasAsListas, listaAtivaId, setListaAtivaId]);
 
-  // useEffect para verificar se a lista deve ser arquivada
   useEffect(() => {
     if (
       listaAtiva &&
       listaAtiva.itens &&
       listaAtiva.itens.length > 0 &&
-      !listaAtiva.isArchived && // Só processa se não estiver já arquivada
+      !listaAtiva.isArchived &&
       listaAtiva.itens.every(item => item.comprado)
     ) {
+      console.log("[IndexScreen] useEffect - Condições para arquivar lista atendidas para:", listaAtiva.nome);
       Alert.alert(
         "Lista Concluída",
         `Todos os itens da lista "${listaAtiva.nome}" foram marcados. Deseja arquivar esta lista?`,
@@ -66,25 +68,20 @@ export default function CurrentListScreen() {
           {
             text: "Sim, Arquivar",
             onPress: () => {
+              const nomeListaArquivada = listaAtiva.nome;
               archiveList(listaAtiva.id);
-              // Após arquivar, encontrar a próxima lista não arquivada para definir como ativa
               const proximaListaAtiva = todasAsListas.find(l => l.id !== listaAtiva.id && !l.isArchived);
               if (proximaListaAtiva) {
                 setListaAtivaId(proximaListaAtiva.id);
               } else {
-                // Se não houver outra lista ativa, pode ir para a tela de listas ou limpar o ID ativo
-                // Isso depende da lógica de criação de lista padrão no ListContext se todas forem arquivadas
-                const algumaListaNaoArquivada = todasAsListas.find(l => !l.isArchived);
+                const algumaListaNaoArquivada = todasAsListas.find(l => !l.isArchived && l.id !== listaAtiva.id);
                 if(algumaListaNaoArquivada){
                     setListaAtivaId(algumaListaNaoArquivada.id);
                 } else {
-                    // Se todas as listas estão arquivadas (incluindo a atual que acabou de ser)
-                    // o ListContext deve lidar com a criação de uma nova lista padrão ou limpar o ID
-                    // Por enquanto, vamos para a tela de listas.
                     router.push("/lists");
                 }
               }
-              Alert.alert("Lista Arquivada", `A lista "${listaAtiva.nome}" foi arquivada.`);
+              Alert.alert("Lista Arquivada", `A lista "${nomeListaArquivada}" foi arquivada.`);
             },
           },
         ],
@@ -93,12 +90,12 @@ export default function CurrentListScreen() {
     }
   }, [listaAtiva, todasAsListas, archiveList, setListaAtivaId, router]);
 
-
   const formatCurrency = (value: number | undefined) => {
     if (typeof value !== 'number' || isNaN(value)) return 'R$ 0,00';
     return `R$ ${value.toFixed(2).replace(".", ",").replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.")}`;
   };
 
+  // Estilos permanecem os mesmos...
   const styles = StyleSheet.create({
     container: {
       flex: 1,
@@ -145,7 +142,7 @@ export default function CurrentListScreen() {
       borderRadius: 26,
       justifyContent: "center",
       alignItems: "center",
-      backgroundColor: currentColorScheme === 'light' ? Cores.light.roxoClaro : Cores.dark.roxoPrincipal, // Exemplo de lógica de cor específica
+      backgroundColor: currentColorScheme === 'light' ? Cores.light.roxoClaro : Cores.dark.roxoPrincipal,
       elevation: 7,
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 3 },
@@ -177,10 +174,10 @@ export default function CurrentListScreen() {
       borderColor: Cores[currentColorScheme].borderColor,
     },
     checkboxComprado: {
-      backgroundColor: Cores[currentColorScheme].tint, // Usar tint para checkbox marcado
+      backgroundColor: Cores[currentColorScheme].tint,
       borderColor: Cores[currentColorScheme].tint,
     },
-    checkboxCheck: { color: Cores[currentColorScheme].buttonText, fontWeight: "bold" }, // Texto do check usa a cor do texto do botão primário
+    checkboxCheck: { color: Cores[currentColorScheme].buttonText, fontWeight: "bold" },
     itemListaTexto: {
       fontSize: 18,
       flexShrink: 1,
@@ -201,7 +198,7 @@ export default function CurrentListScreen() {
     textoBotaoAcao: {
       fontSize: 20,
       fontWeight: "bold",
-      color: Cores[currentColorScheme].tint, // Ações como + e - usam a cor de tint
+      color: Cores[currentColorScheme].tint,
     },
     quantidade: {
       fontSize: 18,
@@ -218,14 +215,16 @@ export default function CurrentListScreen() {
   });
 
   useEffect(() => {
-    const barcode = params.barcode;
+    const barcode = params.barcode as string | undefined;
+    console.log("[IndexScreen] useEffect - params.barcode recebido:", barcode);
     if (barcode && typeof barcode === "string" && barcode.length > 0) {
-      buscarProdutoAPI(barcode); // Renomeado para buscarProdutoAPI para clareza
-      router.setParams({ barcode: "" }); // Limpa o parâmetro para evitar re-scan automático
+      buscarProdutoAPI(barcode);
+      router.setParams({ barcode: "" });
     }
   }, [params.barcode]);
 
   const buscarProdutoAPI = async (barcode: string) => {
+    console.log("[buscarProdutoAPI] Iniciando busca para o código:", barcode);
     if (!/^\d{8,13}$/.test(barcode)) {
       Alert.alert(
         "Código Inválido",
@@ -236,25 +235,28 @@ export default function CurrentListScreen() {
 
     setLoading(true);
     const url = `https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name,product_name_en,product_name_pt,generic_name,brands,quantity,image_url`;
+    console.log("[buscarProdutoAPI] URL da API:", url);
 
     try {
       const response = await fetch(url, {
         method: "GET",
         headers: {
-          "User-Agent": "ListfyApp/1.0 - Mobile App", // Boa prática incluir User-Agent
+          "User-Agent": "ListfyApp/1.0 - Mobile App",
           Accept: "application/json",
         },
       });
+      console.log("[buscarProdutoAPI] Status da Resposta:", response.status, "OK:", response.ok);
 
       if (!response.ok) {
-        // Tratar status não-OK de forma mais genérica antes de tentar parsear JSON
         if (response.status === 404) {
-          throw new Error("ProdutoNaoEncontrado"); // Erro customizado para tratar especificamente
+          console.log("[buscarProdutoAPI] Produto não encontrado (404).");
+          throw new Error("ProdutoNaoEncontrado");
         }
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
 
       const json = await response.json();
+      console.log("[buscarProdutoAPI] JSON recebido:", JSON.stringify(json, null, 2));
 
       if (json.status === 1 && json.product) {
         const nomeDoProduto =
@@ -264,25 +266,28 @@ export default function CurrentListScreen() {
           (json.product.brands && json.product.generic_name
             ? `${json.product.brands} ${json.product.generic_name}`
             : json.product.brands || json.product.generic_name) ||
-          `Produto ${barcode}`; // Fallback mais informativo
-
-        // Passar apenas os detalhes relevantes para adicionarItemEscaneado
+          `Produto ${barcode}`;
+        
         const detalhesProduto = {
-            product_name: nomeDoProduto, // Usar o nome já processado
+            product_name: nomeDoProduto,
             brands: json.product.brands,
             quantity: json.product.quantity,
             image_url: json.product.image_url,
-            barcode: barcode, // Adicionar o barcode aos detalhes
+            barcode: barcode,
         };
+        console.log("[buscarProdutoAPI] Nome do Produto extraído:", nomeDoProduto);
+        console.log("[buscarProdutoAPI] Detalhes do Produto para adicionar:", detalhesProduto);
         adicionarItemEscaneado(nomeDoProduto, detalhesProduto);
 
       } else {
-         Alert.alert(
+        console.log("[buscarProdutoAPI] Produto não encontrado no JSON (status não é 1 ou não há product).");
+        Alert.alert(
           "Produto Não Encontrado",
           "Não encontramos informações para este código de barras em nossa base de dados. Você pode tentar escanear outro produto ou adicioná-lo manualmente à sua lista."
         );
       }
     } catch (error: any) {
+      console.error("[buscarProdutoAPI] Erro na busca:", error);
       if (error.message === "ProdutoNaoEncontrado") {
          Alert.alert(
             "Produto Não Encontrado",
@@ -300,18 +305,24 @@ export default function CurrentListScreen() {
   };
 
   const adicionarItemEscaneado = (texto: string, detalhes?: any) => {
+    console.log("[adicionarItemEscaneado] Tentando adicionar:", texto, "Lista Ativa ID:", listaAtivaId);
     if (texto.trim() === "" || !listaAtivaId) {
       Alert.alert("Erro", "Nenhuma lista ativa selecionada para adicionar o item escaneado.");
       return;
     }
-    if (!todasAsListas.find(l => l.id === listaAtivaId)) {
+    const listaExiste = todasAsListas.find(l => l.id === listaAtivaId);
+    if (!listaExiste) {
         Alert.alert("Erro", "Lista ativa não encontrada. Selecione uma lista válida.");
         if (todasAsListas.length > 0) {
-            setListaAtivaId(todasAsListas[0].id);
-            Alert.alert("Aviso", "Nenhuma lista estava ativa. A primeira lista foi selecionada. Tente adicionar o item novamente.");
+            const proximaAtiva = todasAsListas.find(l => !l.isArchived);
+            if (proximaAtiva) {
+                setListaAtivaId(proximaAtiva.id);
+                Alert.alert("Aviso", `Nenhuma lista estava ativa. "${proximaAtiva.nome}" foi selecionada. Tente adicionar o item novamente.`);
+            }
         }
         return;
     }
+    console.log("[adicionarItemEscaneado] Lista ativa encontrada:", listaExiste.nome);
     const novoItem: Item = {
       id: Date.now().toString(),
       texto: texto,
@@ -321,12 +332,14 @@ export default function CurrentListScreen() {
       comprado: false,
       detalhes,
     };
+    console.log("[adicionarItemEscaneado] Novo item a ser adicionado:", novoItem);
     const novasListas = todasAsListas.map((lista) =>
       lista.id === listaAtivaId
         ? { ...lista, itens: [novoItem, ...lista.itens] }
         : lista
     );
     setTodasAsListas(novasListas);
+    console.log("[adicionarItemEscaneado] Item adicionado. Novas listas:", novasListas);
     Keyboard.dismiss();
   };
 
@@ -403,7 +416,6 @@ export default function CurrentListScreen() {
           >
             {item.texto}
           </Text>
-          {/* Exibir valores apenas se não for lista de tarefas E se houver valores > 0 */}
           {!isListaTarefas && ((item.valorUnitario !== undefined && item.valorUnitario > 0) || (item.valorTotalItem !== undefined && item.valorTotalItem > 0)) ? (
             <Text style={[styles.itemValoresTexto, item.comprado && styles.itemTextoComprado]}>
               VU: {formatCurrency(item.valorUnitario || 0)} | Total: {formatCurrency(item.valorTotalItem || 0)}
@@ -412,7 +424,7 @@ export default function CurrentListScreen() {
         </View>
       </View>
       <View style={styles.acoesItem}>
-        {!isListaTarefas && ( // Renderiza controles de quantidade apenas se não for lista de tarefas
+        {!isListaTarefas && (
           <>
             <Pressable
               onPress={() => handleMudarQuantidade(item.id, -1)}
@@ -458,7 +470,6 @@ export default function CurrentListScreen() {
           {listaAtiva ? (listaAtiva.isArchived ? `${listaAtiva.nome} (Arquivada)` : listaAtiva.nome) : "Carregando Lista..."}
         </Text>
       </View>
-      {/* Adicionar verificação para listaAtiva e se está arquivada antes de renderizar a FlatList e FABs */}
       {listaAtiva && !listaAtiva.isArchived ? (
         <>
           <FlatList
@@ -486,12 +497,11 @@ export default function CurrentListScreen() {
       ) : (
         <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20}}>
           <Text style={styles.listaVaziaTexto}>
-            {listaAtiva?.isArchived
-              ? `A lista "${listaAtiva.nome}" está arquivada. Selecione ou crie uma nova lista em "Minhas Listas".`
+            {listaAtiva?.isArchived 
+              ? `A lista "${listaAtiva.nome}" está arquivada. Selecione ou crie uma nova lista em "Minhas Listas".` 
               : (listaAtivaId ? "Carregando lista..." : "Nenhuma lista selecionada. Visite 'Minhas Listas' para selecionar ou criar uma.")
             }
           </Text>
-          {/* Opcional: Botão para navegar para a tela de listas se nenhuma lista ativa não arquivada for encontrada */}
           {!listaAtiva && !loading && (
              <Pressable style={[styles.fab, {position: 'relative', marginVertical: 20}]} onPress={() => router.push('/lists')}>
                 <Text style={{color: Cores.light.buttonText, fontSize: 16, fontWeight: 'bold'}}>Ver Listas</Text>
@@ -499,7 +509,7 @@ export default function CurrentListScreen() {
           )}
         </View>
       )}
-
+      
       {listaAtivaId && listaAtiva && !listaAtiva.isArchived && (
         <AddItemModal
           visible={isAddItemModalVisible}
