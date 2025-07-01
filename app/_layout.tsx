@@ -5,6 +5,8 @@ import { ListProvider } from "../src/context/ListContext";
 import { ThemeContext, ThemeProvider } from "../src/context/ThemeContext";
 import { Cores } from "../constants/Colors"; // Importar Cores centralizadas
 import { View } from "react-native"; // Necessário para o componente de loading
+// import Toast from 'react-native-toast-message'; // Garantir que esta linha seja removida ou comentada
+// import { toastConfig } from '../src/utils/toastService'; // Esta já deve estar removida
 
 function TabsLayout() {
   const { theme, isLoadingTheme } = useContext(ThemeContext); // Adicionado isLoadingTheme
@@ -86,6 +88,7 @@ export default function RootLayout() {
     <ThemeProvider>
       <ListProvider>
         <TabsLayout />
+        <Toast config={toastConfig} /> {/* Passar o config aqui */}
       </ListProvider>
     </ThemeProvider>
   );

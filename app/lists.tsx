@@ -8,18 +8,18 @@ import {
   Pressable,
   TextInput,
   Modal,
-  Alert,
+  Alert, // Manter Alert para confirmações e feedback original
   Platform,
   StatusBar,
   ScrollView,
-  TouchableOpacity, // Usar para melhor feedback de longPress
+  TouchableOpacity,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { ListContext, ListaDeCompras } from "../src/context/ListContext";
 import { ThemeContext } from "../src/context/ThemeContext";
 import { Cores } from "../constants/Colors";
-import ViewListItemsModal from "../src/components/ViewListItemsModal"; // Importar o novo modal
+import ViewListItemsModal from "../src/components/ViewListItemsModal";
 
 const IconeAdicionar = ({ currentTheme }: { currentTheme: 'light' | 'dark' }) => (
   <Text style={{ color: Cores[currentTheme].buttonText, fontSize: 24, lineHeight: 24 }}>+</Text>
@@ -39,7 +39,6 @@ export default function ListsScreen() {
   const [modalCriarEditarVisivel, setModalCriarEditarVisivel] = useState(false);
   const [nomeLista, setNomeLista] = useState("");
   const [editandoListaId, setEditandoListaId] = useState<string | null>(null);
-
   const [visualizandoLista, setVisualizandoLista] = useState<ListaDeCompras | null>(null);
 
   const styles = StyleSheet.create({
@@ -116,33 +115,33 @@ export default function ListsScreen() {
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
-      marginTop: 20, // Reduzido o marginTop
+      marginTop: 20,
       paddingHorizontal: 20,
-      minHeight: 120, // Altura mínima para seções vazias
+      minHeight: 120,
     },
     emptyTitle: {
-      fontSize: 18, // Ajustado
+      fontSize: 18,
       fontWeight: "bold",
-      marginTop: 10, // Ajustado
-      marginBottom: 8, // Ajustado
+      marginTop: 10,
+      marginBottom: 8,
       color: Cores[currentColorScheme].text,
       textAlign: 'center',
     },
     emptySubtitle: {
-      fontSize: 15, // Ajustado
+      fontSize: 15,
       textAlign: "center",
-      marginBottom: 15, // Ajustado
+      marginBottom: 15,
       color: Cores[currentColorScheme].textSecondary,
     },
     botaoCriar: {
-      paddingVertical: 12, // Ajustado
-      paddingHorizontal: 25, // Ajustado
-      borderRadius: 10, // Ajustado
+      paddingVertical: 12,
+      paddingHorizontal: 25,
+      borderRadius: 10,
       alignItems: "center",
       backgroundColor: Cores[currentColorScheme].buttonPrimaryBackground,
     },
     textoBotaoCriar: {
-      fontSize: 16, // Ajustado
+      fontSize: 16,
       fontWeight: "bold",
       color: Cores[currentColorScheme].buttonText,
     },
@@ -220,14 +219,16 @@ export default function ListsScreen() {
         lista.id === editandoListaId ? { ...lista, nome: nomeLista.trim() } : lista
       );
       setTodasAsListas(novasListas);
+      // Alert.alert("Sucesso", "Lista renomeada!"); // Opcional
     } else {
       const novaLista: ListaDeCompras = {
         id: Date.now().toString(),
         nome: nomeLista.trim(),
         itens: [],
-        isArchived: false, // Nova lista nunca começa arquivada
+        isArchived: false,
       };
       setTodasAsListas([...todasAsListas, novaLista]);
+      // Alert.alert("Sucesso", `Lista "${novaLista.nome}" criada!`); // Opcional
     }
     setNomeLista("");
     setEditandoListaId(null);
@@ -238,8 +239,11 @@ export default function ListsScreen() {
     const listaParaExcluir = todasAsListas.find(l => l.id === id);
     if (!listaParaExcluir) return;
 
-    // Permite excluir mesmo que seja a última lista, o ListContext criará uma padrão se necessário.
-    // No entanto, se for a lista ativa, tentaremos mudar para outra.
+    if (todasAsListas.length === 1) {
+      Alert.alert("Ação não permitida", "Você precisa ter pelo menos uma lista. Crie uma nova lista antes de tentar excluir esta.");
+      return;
+    }
+
     Alert.alert(
       "Confirmar Exclusão",
       `Tem certeza que deseja excluir a lista "${listaParaExcluir.nome}"? Todos os itens contidos nela serão perdidos.`,
@@ -255,6 +259,7 @@ export default function ListsScreen() {
               const proximaListaNaoArquivada = novasListas.find(l => !l.isArchived);
               setListaAtivaId(proximaListaNaoArquivada ? proximaListaNaoArquivada.id : (novasListas.length > 0 ? novasListas[0].id : ""));
             }
+            // Alert.alert("Lista Excluída", `A lista "${listaParaExcluir.nome}" foi excluída.`); // Opcional
           },
         },
       ]
@@ -272,38 +277,39 @@ export default function ListsScreen() {
   };
 
   const handleVisualizarItens = (lista: ListaDeCompras) => {
-    // Não seleciona como ativa, apenas abre o modal de visualização
     setVisualizandoLista(lista);
   };
 
   const handleDefinirComoAtiva = (listaId: string) => {
     const listaSelecionada = todasAsListas.find(l => l.id === listaId);
     if (listaSelecionada && listaSelecionada.isArchived) {
-        Alert.alert(
-            "Lista Arquivada",
-            "Esta lista está arquivada. Desarquive-a para defini-la como ativa.",
-            [{text: "OK"}]
-        );
+        Alert.alert("Lista Arquivada", "Esta lista está arquivada. Desarquive-a para torná-la ativa.");
         return;
     }
     setListaAtivaId(listaId);
     router.push("/");
-    Alert.alert("Lista Ativa", `A lista "${listaSelecionada?.nome}" foi definida como ativa.`);
+    if (listaSelecionada) {
+        Alert.alert("Lista Ativa", `A lista "${listaSelecionada.nome}" foi definida como ativa.`);
+    }
   };
 
   const handleUnarchiveList = (listId: string) => {
+    const lista = todasAsListas.find(l => l.id === listId);
     setTodasAsListas(prevListas =>
-      prevListas.map(lista =>
-        lista.id === listId ? { ...lista, isArchived: false } : lista
+      prevListas.map(l =>
+        l.id === listId ? { ...l, isArchived: false } : l
       )
     );
+    if(lista){
+        Alert.alert("Lista Desarquivada", `A lista "${lista.nome}" foi desarquivada.`);
+    }
   };
 
   const renderListaItem = ({ item }: { item: ListaDeCompras }) => (
-    <TouchableOpacity // Usar TouchableOpacity para feedback de longPress
+    <TouchableOpacity
       onPress={() => handleVisualizarItens(item)}
       onLongPress={() => handleDefinirComoAtiva(item.id)}
-      delayLongPress={300} // Tempo para considerar long press
+      delayLongPress={300}
       style={[styles.itemListaContainer, item.isArchived && { opacity: 0.6 }]}
     >
       <View style={styles.itemNomeContainer}>
@@ -338,7 +344,7 @@ export default function ListsScreen() {
         )}
         <Pressable
           onPress={() => handleExcluirLista(item.id)}
-          style={[styles.botaoAcao, { marginLeft: item.isArchived || !item.isArchived ? 8 : 0 }]}
+          style={[styles.botaoAcao, { marginLeft: (item.isArchived || !item.isArchived) ? 8 : 0 }]}
         >
           <IconeLixeira currentTheme={currentColorScheme} />
         </Pressable>
@@ -412,7 +418,6 @@ export default function ListsScreen() {
         )}
       </ScrollView>
 
-      {/* Modal para Criar/Editar Nome da Lista */}
       <Modal
         animationType="fade"
         transparent={true}
@@ -459,7 +464,6 @@ export default function ListsScreen() {
         </View>
       </Modal>
 
-      {/* Modal para Visualizar Itens da Lista */}
       {visualizandoLista && (
         <ViewListItemsModal
             visible={!!visualizandoLista}
