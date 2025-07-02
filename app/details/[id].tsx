@@ -17,6 +17,9 @@ import { ThemeContext } from "../../src/context/ThemeContext";
 import { ListContext, Item } from "../../src/context/ListContext";
 import { Cores as GlobalCores } from "../../constants/Colors";
 import { StatusBar } from "expo-status-bar";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const USER_BARCODE_CACHE_KEY = "@userBarcodeCache"; // Mesma chave usada em index.tsx
 
 export default function ProductDetailsScreen() {
   const params = useLocalSearchParams();
@@ -53,20 +56,41 @@ export default function ProductDetailsScreen() {
 
     if (foundItem) {
       setItemEditavel(foundItem);
-      setNomeEditavel(foundItem.texto);
-      setValorUnitarioEditavel(foundItem.valorUnitario?.toString().replace(".", ",") || "");
+      // Apenas define nomeEditavel e valorUnitarioEditavel se eles ainda não foram editados pelo usuário
+      // OU se o itemEditavel (o objeto no estado) é diferente do foundItem (novo item carregado)
+      // Esta verificação de itemEditavel.id previne o reset se o foundItem for uma nova referência mas mesmos dados.
+      if (!itemEditavel || itemEditavel.id !== foundItem.id) {
+        setNomeEditavel(foundItem.texto);
+        setValorUnitarioEditavel(foundItem.valorUnitario?.toString().replace(".", ",") || "");
+      }
       setIsListaTarefasDetalhes(nomeDaListaDoItem.toLowerCase() === "tarefas");
-    } else if (!openFoodFactsDetalhes) {
-      Alert.alert("Erro", "Item não encontrado.", [{ text: "OK", onPress: () => router.back() }]);
+    } else {
+      // Se o item não foi encontrado nas listas, não há o que editar.
+      // O fluxo normal é que o item já esteja na lista ao abrir esta tela.
+      // Se openFoodFactsDetalhes existir, significa que veio do scanner mas não foi adicionado à lista (improvável com fluxo atual).
+      // Se não há foundItem, e não há openFoodFactsDetalhes, então é um item desconhecido.
+      if (!openFoodFactsDetalhes) { // Apenas mostra alerta se não for um "novo" item via scanner que falhou ao ser adicionado antes.
+        Alert.alert("Erro", "Item não encontrado para edição.", [{ text: "OK", onPress: () => router.back() }]);
+      }
+      // Se openFoodFactsDetalhes existir mas foundItem não, o usuário verá os detalhes do produto escaneado
+      // mas os campos de edição (nome/valor) não serão preenchidos a partir de um item de lista.
+      // O botão "Salvar Alterações" não aparecerá se itemEditavel for null.
     }
     setIsLoading(false);
-  }, [itemId, todasAsListas, router, openFoodFactsDetalhes]);
+  // Removido openFoodFactsDetalhes e router das dependências.
+  // As funções de setState (setItemEditavel, etc.) são estáveis e não precisam ser listadas,
+  // mas incluí-las não prejudica e pode ser mais explícito para alguns linters.
+  }, [itemId, todasAsListas, itemEditavel]); // Adicionado itemEditavel para a lógica de comparação.
 
   useEffect(() => {
-    const quantidade = itemEditavel?.quantidade || 0; 
-    const valorUnit = parseFloat(valorUnitarioEditavel.replace(",", ".")) || 0;
-    setValorTotalCalculado(quantidade * valorUnit);
-  }, [valorUnitarioEditavel, itemEditavel?.quantidade]);
+    // Este useEffect recalcula o valor total quando o valor unitário ou a quantidade do itemEditavel mudam.
+    // Assegure-se que itemEditavel não seja nulo.
+    if (itemEditavel) {
+      const quantidade = itemEditavel.quantidade || 0;
+      const valorUnit = parseFloat(valorUnitarioEditavel.replace(",", ".")) || 0;
+      setValorTotalCalculado(quantidade * valorUnit);
+    }
+  }, [valorUnitarioEditavel, itemEditavel]); // itemEditavel em vez de itemEditavel.quantidade para reagir a mudança do item
 
   const styles = StyleSheet.create({
     container: {
@@ -201,6 +225,30 @@ export default function ProductDetailsScreen() {
       itens: lista.itens.map((i) => (i.id === itemId ? updatedItem : i)),
     }));
     setTodasAsListas(newListas);
+
+    // Salvar no cache se for um item escaneado
+    if (updatedItem.detalhes && updatedItem.detalhes.barcode) {
+      const barcode = updatedItem.detalhes.barcode;
+      try {
+        AsyncStorage.getItem(USER_BARCODE_CACHE_KEY).then((cachedDataJson) => {
+          const cachedItems = cachedDataJson ? JSON.parse(cachedDataJson) : {};
+          cachedItems[barcode] = {
+            nome: updatedItem.texto,
+            valorUnitario: updatedItem.valorUnitario,
+            // Opcional: manter outros detalhes da API se já existirem,
+            // ou apenas salvar o que o usuário pode ter modificado.
+            // Para manter simples, vamos sobrescrever com os dados atuais do item,
+            // incluindo os `detalhes` que podem conter informações da API.
+            detalhes: updatedItem.detalhes,
+          };
+          AsyncStorage.setItem(USER_BARCODE_CACHE_KEY, JSON.stringify(cachedItems));
+          console.log(`Item ${barcode} salvo no cache.`);
+        });
+      } catch (error) {
+        console.error("Falha ao salvar item no cache do AsyncStorage", error);
+      }
+    }
+
     Alert.alert("Sucesso", "Item atualizado!", [{ text: "OK", onPress: () => router.back() }]);
   };
   

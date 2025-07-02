@@ -161,7 +161,8 @@ const AddItemModal: React.FC<AddItemModalProps> = ({
     };
     const updatedListas = todasAsListas.map((lista) => {
       if (lista.id === listaId) {
-        return { ...lista, itens: [...lista.itens, newItem] };
+        // Adiciona o novo item no início da lista de itens
+        return { ...lista, itens: [newItem, ...lista.itens] };
       }
       return lista;
     });
