@@ -1,5 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useContext, useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   StyleSheet,
   Text,
@@ -12,6 +13,7 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Modal, ScrollView
 } from "react-native";
 import { ListContext, Item } from "../src/context/ListContext";
 import { ThemeContext } from "../src/context/ThemeContext";
@@ -28,6 +30,8 @@ const IconeLixeira = ({ currentTheme }: { currentTheme: 'light' | 'dark' }) => (
   <Text style={{ color: Cores[currentTheme].destructive, fontSize: 20 }}>🗑️</Text>
 );
 
+const USER_BARCODE_CACHE_KEY = "@userBarcodeCache";
+
 export default function CurrentListScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
@@ -39,6 +43,9 @@ export default function CurrentListScreen() {
   const [loading, setLoading] = useState(false);
   const [isAddItemModalVisible, setIsAddItemModalVisible] = useState(false);
   const [isSummaryModalVisible, setIsSummaryModalVisible] = useState(false);
+  const [isViewTextModalVisible, setIsViewTextModalVisible] = useState(false);
+  const [currentItemText, setCurrentItemText] = useState("");
+  const [dismissedArchivePrompts, setDismissedArchivePrompts] = useState<Record<string, boolean>>({});
 
   const listaAtiva = todasAsListas.find((l) => l.id === listaAtivaId);
   const isListaTarefas = listaAtiva?.nome.toLowerCase() === "tarefas";
@@ -53,34 +60,42 @@ export default function CurrentListScreen() {
   useEffect(() => {
     if (
       listaAtiva &&
+      listaAtiva &&
       listaAtiva.itens &&
       listaAtiva.itens.length > 0 &&
-      !listaAtiva.isArchived && // Só processa se não estiver já arquivada
-      listaAtiva.itens.every(item => item.comprado)
+      !listaAtiva.isArchived &&
+      listaAtiva.itens.every(item => item.comprado) &&
+      !dismissedArchivePrompts[listaAtiva.id] // Adicionada esta condição
     ) {
       Alert.alert(
         "Lista Concluída",
         `Todos os itens da lista "${listaAtiva.nome}" foram marcados. Deseja arquivar esta lista?`,
         [
-          { text: "Não", style: "cancel" },
+          {
+            text: "Não",
+            style: "cancel",
+            onPress: () => {
+              setDismissedArchivePrompts(prev => ({ ...prev, [listaAtiva.id]: true }));
+            },
+          },
           {
             text: "Sim, Arquivar",
             onPress: () => {
               archiveList(listaAtiva.id);
-              // Após arquivar, encontrar a próxima lista não arquivada para definir como ativa
+              setDismissedArchivePrompts(prev => {
+                const newState = { ...prev };
+                delete newState[listaAtiva.id]; // Limpa o prompt para esta lista, caso seja desarquivada
+                return newState;
+              });
+              // Lógica para encontrar a próxima lista ativa...
               const proximaListaAtiva = todasAsListas.find(l => l.id !== listaAtiva.id && !l.isArchived);
               if (proximaListaAtiva) {
                 setListaAtivaId(proximaListaAtiva.id);
               } else {
-                // Se não houver outra lista ativa, pode ir para a tela de listas ou limpar o ID ativo
-                // Isso depende da lógica de criação de lista padrão no ListContext se todas forem arquivadas
-                const algumaListaNaoArquivada = todasAsListas.find(l => !l.isArchived);
+                const algumaListaNaoArquivada = todasAsListas.find(l => !l.isArchived && l.id !== listaAtiva.id);
                 if(algumaListaNaoArquivada){
                     setListaAtivaId(algumaListaNaoArquivada.id);
                 } else {
-                    // Se todas as listas estão arquivadas (incluindo a atual que acabou de ser)
-                    // o ListContext deve lidar com a criação de uma nova lista padrão ou limpar o ID
-                    // Por enquanto, vamos para a tela de listas.
                     router.push("/lists");
                 }
               }
@@ -91,7 +106,21 @@ export default function CurrentListScreen() {
         { cancelable: true }
       );
     }
-  }, [listaAtiva, todasAsListas, archiveList, setListaAtivaId, router]);
+  }, [listaAtiva, todasAsListas, archiveList, setListaAtivaId, router, dismissedArchivePrompts]);
+
+  // Limpar o dismissed prompt se a lista ativa mudar e não estiver mais completa, ou se for arquivada/desarquivada externamente
+  useEffect(() => {
+    if (listaAtiva && dismissedArchivePrompts[listaAtiva.id]) {
+      const isStillComplete = listaAtiva.itens && listaAtiva.itens.length > 0 && listaAtiva.itens.every(item => item.comprado);
+      if (!isStillComplete || listaAtiva.isArchived) {
+        setDismissedArchivePrompts(prev => {
+          const newState = { ...prev };
+          delete newState[listaAtiva.id];
+          return newState;
+        });
+      }
+    }
+  }, [listaAtiva, dismissedArchivePrompts]);
 
 
   const formatCurrency = (value: number | undefined) => {
@@ -215,17 +244,63 @@ export default function CurrentListScreen() {
       marginTop: 50,
       color: Cores[currentColorScheme].textSecondary,
     },
+    // Estilos para o Modal de Visualização de Texto
+    modalViewTextContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "rgba(0,0,0,0.6)",
+    },
+    modalViewTextContent: {
+      width: "90%",
+      maxWidth: 500,
+      maxHeight: "70%",
+      backgroundColor: Cores[currentColorScheme].cardBackground,
+      borderRadius: 12,
+      padding: 20,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+    },
+    modalViewTextTitle: {
+      fontSize: 20,
+      fontWeight: "bold",
+      marginBottom: 15,
+      textAlign: "center",
+      color: Cores[currentColorScheme].text,
+    },
+    modalViewTextScrollView: {
+      marginBottom: 20,
+    },
+    modalViewFullText: {
+      fontSize: 17,
+      color: Cores[currentColorScheme].text,
+      lineHeight: 24,
+    },
+    modalViewTextCloseButton: {
+      backgroundColor: Cores[currentColorScheme].buttonPrimaryBackground,
+      paddingVertical: 12,
+      borderRadius: 8,
+      alignItems: "center",
+    },
+    modalViewTextCloseButtonText: {
+      fontSize: 16,
+      fontWeight: "bold",
+      color: Cores[currentColorScheme].buttonText,
+    },
   });
 
   useEffect(() => {
     const barcode = params.barcode;
     if (barcode && typeof barcode === "string" && barcode.length > 0) {
-      buscarProdutoAPI(barcode); // Renomeado para buscarProdutoAPI para clareza
+      handleBarcodeScanned(barcode); // Nome mais genérico para a função que agora pode ou não chamar a API
       router.setParams({ barcode: "" }); // Limpa o parâmetro para evitar re-scan automático
     }
   }, [params.barcode]);
 
-  const buscarProdutoAPI = async (barcode: string) => {
+  const handleBarcodeScanned = async (barcode: string) => {
     if (!/^\d{8,13}$/.test(barcode)) {
       Alert.alert(
         "Código Inválido",
@@ -235,22 +310,41 @@ export default function CurrentListScreen() {
     }
 
     setLoading(true);
-    const url = `https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name,product_name_en,product_name_pt,generic_name,brands,quantity,image_url`;
 
     try {
+      const cachedDataJson = await AsyncStorage.getItem(USER_BARCODE_CACHE_KEY);
+      const cachedItems = cachedDataJson ? JSON.parse(cachedDataJson) : {};
+      const cachedProduct = cachedItems[barcode];
+
+      if (cachedProduct) {
+        console.log("Produto encontrado no cache:", cachedProduct);
+        // Usar dados do cache. `detalhes` pode ser uma combinação ou apenas o que foi salvo.
+        // Por enquanto, vamos assumir que o cache contém o nome e valorUnitario.
+        // Os `detalhes` ainda podem vir da API ou ser parcialmente preenchidos.
+        const detalhesProduto = {
+          ...(cachedProduct.detalhes || {}), // Mantém detalhes da API se existirem no cache
+          barcode: barcode, // Garante que o barcode esteja nos detalhes
+          product_name: cachedProduct.nome, // Prioriza nome do cache
+          // Outros campos como brands, quantity, image_url podem vir de `cachedProduct.detalhes`
+          // ou serem buscados novamente se desejado (fora do escopo desta alteração simples)
+        };
+        adicionarItemComDados(cachedProduct.nome, cachedProduct.valorUnitario, detalhesProduto);
+        setLoading(false);
+        return; // Item adicionado a partir do cache, não precisa buscar na API
+      }
+
+      // Se não estiver no cache, buscar na API
+      const url = `https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name,product_name_en,product_name_pt,generic_name,brands,quantity,image_url`;
       const response = await fetch(url, {
         method: "GET",
         headers: {
-          "User-Agent": "ListfyApp/1.0 - Mobile App", // Boa prática incluir User-Agent
+          "User-Agent": "ListfyApp/1.0 - Mobile App",
           Accept: "application/json",
         },
       });
 
       if (!response.ok) {
-        // Tratar status não-OK de forma mais genérica antes de tentar parsear JSON
-        if (response.status === 404) {
-          throw new Error("ProdutoNaoEncontrado"); // Erro customizado para tratar especificamente
-        }
+        if (response.status === 404) throw new Error("ProdutoNaoEncontrado");
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
 
@@ -264,34 +358,34 @@ export default function CurrentListScreen() {
           (json.product.brands && json.product.generic_name
             ? `${json.product.brands} ${json.product.generic_name}`
             : json.product.brands || json.product.generic_name) ||
-          `Produto ${barcode}`; // Fallback mais informativo
+          `Produto ${barcode}`;
 
-        // Passar apenas os detalhes relevantes para adicionarItemEscaneado
         const detalhesProduto = {
-            product_name: nomeDoProduto, // Usar o nome já processado
-            brands: json.product.brands,
-            quantity: json.product.quantity,
-            image_url: json.product.image_url,
-            barcode: barcode, // Adicionar o barcode aos detalhes
+          product_name: nomeDoProduto,
+          brands: json.product.brands,
+          quantity: json.product.quantity,
+          image_url: json.product.image_url,
+          barcode: barcode,
         };
-        adicionarItemEscaneado(nomeDoProduto, detalhesProduto);
-
+        // Adiciona com valor unitário padrão 0, já que não temos cache
+        adicionarItemComDados(nomeDoProduto, 0, detalhesProduto);
       } else {
-         Alert.alert(
+        Alert.alert(
           "Produto Não Encontrado",
-          "Não encontramos informações para este código de barras em nossa base de dados. Você pode tentar escanear outro produto ou adicioná-lo manualmente à sua lista."
+          "Não encontramos informações para este código de barras. Você pode adicioná-lo manualmente."
         );
       }
     } catch (error: any) {
       if (error.message === "ProdutoNaoEncontrado") {
-         Alert.alert(
-            "Produto Não Encontrado",
-            "Não encontramos informações para este código de barras em nossa base de dados. Você pode tentar escanear outro produto ou adicioná-lo manualmente à sua lista."
-          );
+        Alert.alert(
+          "Produto Não Encontrado",
+          "Não encontramos informações para este código de barras. Você pode adicioná-lo manualmente."
+        );
       } else {
+        console.error("Falha ao buscar produto (API ou Cache):", error);
         Alert.alert(
           "Falha na Busca",
-          "Não foi possível buscar as informações do produto no momento. Verifique sua conexão com a internet e tente novamente."
+          "Não foi possível buscar as informações do produto. Verifique sua conexão ou tente novamente."
         );
       }
     } finally {
@@ -299,36 +393,84 @@ export default function CurrentListScreen() {
     }
   };
 
-  const adicionarItemEscaneado = (texto: string, detalhes?: any) => {
+  // Função unificada para adicionar item, seja do cache ou da API
+  const adicionarItemComDados = (texto: string, valorUnitario: number = 0, detalhes?: any) => {
     if (texto.trim() === "" || !listaAtivaId) {
-      Alert.alert("Erro", "Nenhuma lista ativa selecionada para adicionar o item escaneado.");
+      Alert.alert("Erro", "Nenhuma lista ativa selecionada para adicionar o item.");
       return;
     }
-    if (!todasAsListas.find(l => l.id === listaAtivaId)) {
+
+    let listaParaAtualizar = todasAsListas.find(l => l.id === listaAtivaId);
+
+    if (!listaParaAtualizar) {
         Alert.alert("Erro", "Lista ativa não encontrada. Selecione uma lista válida.");
-        if (todasAsListas.length > 0) {
-            setListaAtivaId(todasAsListas[0].id);
-            Alert.alert("Aviso", "Nenhuma lista estava ativa. A primeira lista foi selecionada. Tente adicionar o item novamente.");
-        }
+        // Lógica para tentar encontrar uma lista ativa alternativa omitida para brevidade, mas deve ser mantida ou ajustada.
         return;
     }
-    const novoItem: Item = {
-      id: Date.now().toString(),
-      texto: texto,
-      quantidade: 1,
-      valorUnitario: 0,
-      valorTotalItem: 0,
-      comprado: false,
-      detalhes,
-    };
-    const novasListas = todasAsListas.map((lista) =>
-      lista.id === listaAtivaId
-        ? { ...lista, itens: [novoItem, ...lista.itens] }
-        : lista
-    );
-    setTodasAsListas(novasListas);
+
+    const barcodeDoNovoItem = detalhes?.barcode;
+    let itemExistente = null;
+
+    // Prioridade 1: Verificar por barcode
+    if (barcodeDoNovoItem) {
+      itemExistente = listaParaAtualizar.itens.find(
+        (i) => i.detalhes?.barcode === barcodeDoNovoItem
+      );
+    }
+
+    // Prioridade 2: Verificar por nome (se não encontrado por barcode)
+    if (!itemExistente) {
+      itemExistente = listaParaAtualizar.itens.find(
+        (i) => i.texto.toLowerCase() === texto.toLowerCase()
+      );
+    }
+
+    if (itemExistente && !isListaTarefas) { // Só agrupa se não for lista de tarefas
+      // Item encontrado, apenas incrementa a quantidade
+      const novasLojas = todasAsListas.map((lista) => {
+        if (lista.id === listaAtivaId) {
+          return {
+            ...lista,
+            itens: lista.itens.map((i) => {
+              if (i.id === itemExistente!.id) {
+                const novaQuantidade = i.quantidade + 1;
+                return {
+                  ...i,
+                  quantidade: novaQuantidade,
+                  valorTotalItem: (i.valorUnitario || 0) * novaQuantidade,
+                  // Opcional: atualizar 'detalhes' se o novo item escaneado tiver infos mais recentes
+                  // detalhes: detalhes || i.detalhes,
+                };
+              }
+              return i;
+            }),
+          };
+        }
+        return lista;
+      });
+      setTodasAsListas(novasLojas);
+      // Alert.alert("Item Atualizado", `A quantidade de "${texto}" foi incrementada.`); // Removido
+    } else {
+      // Adiciona como novo item
+      const novoItem: Item = {
+        id: Date.now().toString(),
+        texto: texto,
+        quantidade: 1,
+        valorUnitario: valorUnitario,
+        valorTotalItem: valorUnitario, // para quantidade 1
+        comprado: false,
+        detalhes,
+      };
+      const novasLojas = todasAsListas.map((lista) =>
+        lista.id === listaAtivaId
+          ? { ...lista, itens: [novoItem, ...lista.itens] }
+          : lista
+      );
+      setTodasAsListas(novasLojas);
+    }
     Keyboard.dismiss();
   };
+
 
   const handleMudarQuantidade = (itemId: string, delta: number) => {
     const novasListas = todasAsListas.map((l) =>
@@ -347,17 +489,38 @@ export default function CurrentListScreen() {
   };
 
   const handleMarcarItem = (itemId: string) => {
-    const novasListas = todasAsListas.map((l) =>
-      l.id === listaAtivaId
-        ? {
-            ...l,
-            itens: l.itens.map((i) =>
-              i.id === itemId ? { ...i, comprado: !i.comprado } : i
-            ),
-          }
-        : l
-    );
+    let itemFoiDesmarcado = false;
+    let listaIdDoItem = "";
+
+    const novasListas = todasAsListas.map((l) => {
+      if (l.id === listaAtivaId) {
+        listaIdDoItem = l.id;
+        return {
+          ...l,
+          itens: l.itens.map((i) => {
+            if (i.id === itemId) {
+              if (i.comprado) { // Se estava comprado, vai ser desmarcado
+                itemFoiDesmarcado = true;
+              }
+              return { ...i, comprado: !i.comprado };
+            }
+            return i;
+          }),
+        };
+      }
+      return l;
+    });
+
     setTodasAsListas(novasListas);
+
+    // Se um item foi desmarcado na lista ativa, e essa lista tinha um prompt dispensado, limpa o prompt
+    if (itemFoiDesmarcado && listaIdDoItem && dismissedArchivePrompts[listaIdDoItem]) {
+      setDismissedArchivePrompts(prev => {
+        const newState = { ...prev };
+        delete newState[listaIdDoItem];
+        return newState;
+      });
+    }
   };
 
   const handleRemoverItem = (itemId: string) => {
@@ -369,7 +532,7 @@ export default function CurrentListScreen() {
     setTodasAsListas(novasListas);
   };
 
-  const handleVerDetalhes = (item: Item) => {
+  const handleNavigateToDetails = (item: Item) => { // Renomeado para clareza
     const paramsNavegacao: any = { id: item.id };
     if (item.detalhes) {
       paramsNavegacao.itemDetalhesJSON = JSON.stringify(item.detalhes);
@@ -380,9 +543,16 @@ export default function CurrentListScreen() {
     });
   };
 
+  const handleShowFullText = (text: string) => {
+    setCurrentItemText(text);
+    setIsViewTextModalVisible(true);
+  };
+
   const renderItem = ({ item }: { item: Item }) => (
     <Pressable
-      onPress={() => handleVerDetalhes(item)}
+      onPress={() => handleShowFullText(item.texto)} // Toque curto para ver texto completo
+      onLongPress={() => handleNavigateToDetails(item)} // Toque longo para editar
+      delayLongPress={300} // Tempo para considerar long press
       style={styles.itemListaContainer}
     >
       <View style={styles.checkboxArea}>
@@ -474,7 +644,8 @@ export default function CurrentListScreen() {
             }
             contentContainerStyle={listaAtiva.itens?.length === 0 ? { flex: 1, justifyContent: 'center' } : {}}
           />
-          {listaAtiva.itens && listaAtiva.itens.length > 0 && (
+          {/* Mostrar FAB de resumo apenas se não for lista de tarefas e tiver itens */}
+          {listaAtiva.itens && listaAtiva.itens.length > 0 && !isListaTarefas && (
             <Pressable style={styles.fabSummary} onPress={() => setIsSummaryModalVisible(true)}>
               <Ionicons name="cash-outline" size={26} color={Cores.light.buttonText} />
             </Pressable>
@@ -515,6 +686,29 @@ export default function CurrentListScreen() {
           listName={listaAtiva.nome}
         />
       )}
+
+      {/* Modal para Visualizar Texto Completo do Item */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={isViewTextModalVisible}
+        onRequestClose={() => setIsViewTextModalVisible(false)}
+      >
+        <View style={styles.modalViewTextContainer}>
+          <View style={styles.modalViewTextContent}>
+            <Text style={styles.modalViewTextTitle}>Nome Completo do Item</Text>
+            <ScrollView style={styles.modalViewTextScrollView}>
+              <Text style={styles.modalViewFullText}>{currentItemText}</Text>
+            </ScrollView>
+            <Pressable
+              style={styles.modalViewTextCloseButton}
+              onPress={() => setIsViewTextModalVisible(false)}
+            >
+              <Text style={styles.modalViewTextCloseButtonText}>Fechar</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

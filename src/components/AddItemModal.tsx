@@ -142,30 +142,70 @@ const AddItemModal: React.FC<AddItemModalProps> = ({
       return;
     }
 
+    const nomeItemFormatado = nomeItem.trim();
+    const valorUnitarioFinal = isListaTarefas ? 0 : (parseFloat(valorUnitario.replace(",", ".")) || 0);
     let qtdFinal = parseFloat(quantidade) || 1;
+
     if (isListaTarefas) {
-      // Para listas de tarefas, a quantidade pode ser sempre 1, ou 0 se não for relevante.
-      // Vamos usar 1 como padrão implícito, já que o campo não é mostrado.
-      qtdFinal = 1;
+      qtdFinal = 1; // Quantidade padrão para tarefas
     }
 
+    const listaAlvo = todasAsListas.find(l => l.id === listaId);
+    if (!listaAlvo) {
+        // Idealmente, notificar o usuário ou tratar esse erro, mas por ora apenas retorna.
+        console.error("Lista alvo não encontrada no AddItemModal");
+        return;
+    }
 
-    const newItem: Item = {
-      id: Date.now().toString(),
-      texto: nomeItem.trim(),
-      quantidade: qtdFinal,
-      // Valor unitário e total podem ser 0 ou undefined para tarefas, se não aplicável.
-      valorUnitario: isListaTarefas ? 0 : (parseFloat(valorUnitario.replace(",", ".")) || 0),
-      valorTotalItem: isListaTarefas ? 0 : valorTotalItem,
-      comprado: false,
-    };
-    const updatedListas = todasAsListas.map((lista) => {
-      if (lista.id === listaId) {
-        return { ...lista, itens: [...lista.itens, newItem] };
-      }
-      return lista;
-    });
-    setTodasAsListas(updatedListas);
+    const itemExistente = listaAlvo.itens.find(
+      (i) => i.texto.toLowerCase() === nomeItemFormatado.toLowerCase()
+    );
+
+    if (itemExistente && !isListaTarefas) { // Só agrupa se não for lista de tarefas
+      const updatedListas = todasAsListas.map((lista) => {
+        if (lista.id === listaId) {
+          return {
+            ...lista,
+            itens: lista.itens.map((i) => {
+              if (i.id === itemExistente.id) {
+                const novaQuantidade = i.quantidade + qtdFinal;
+                return {
+                  ...i,
+                  quantidade: novaQuantidade,
+                  // Se o valor unitário do item existente for 0 e um novo valor foi fornecido,
+                  // podemos optar por atualizar o valor unitário.
+                  // Por simplicidade, vamos manter o valor unitário original do item existente,
+                  // a menos que ele seja 0 e um novo valor > 0 seja fornecido.
+                  valorUnitario: (i.valorUnitario === 0 && valorUnitarioFinal > 0) ? valorUnitarioFinal : i.valorUnitario,
+                  valorTotalItem: ((i.valorUnitario === 0 && valorUnitarioFinal > 0) ? valorUnitarioFinal : i.valorUnitario || 0) * novaQuantidade,
+                };
+              }
+              return i;
+            }),
+          };
+        }
+        return lista;
+      });
+      setTodasAsListas(updatedListas);
+      // Alert.alert("Item Atualizado", `A quantidade de "${nomeItemFormatado}" foi incrementada.`);
+    } else {
+      // Adiciona como novo item
+      const newItem: Item = {
+        id: Date.now().toString(),
+        texto: nomeItemFormatado,
+        quantidade: qtdFinal,
+        valorUnitario: valorUnitarioFinal,
+        valorTotalItem: isListaTarefas ? 0 : (valorUnitarioFinal * qtdFinal), // Recalcula com qtdFinal
+        comprado: false,
+      };
+      const updatedListas = todasAsListas.map((lista) => {
+        if (lista.id === listaId) {
+          return { ...lista, itens: [newItem, ...lista.itens] };
+        }
+        return lista;
+      });
+      setTodasAsListas(updatedListas);
+    }
     resetFieldsAndClose();
   };
 
