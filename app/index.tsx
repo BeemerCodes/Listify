@@ -399,7 +399,7 @@ export default function CurrentListScreen() {
       Alert.alert("Erro", "Nenhuma lista ativa selecionada para adicionar o item.");
       return;
     }
-
+    
     let listaParaAtualizar = todasAsListas.find(l => l.id === listaAtivaId);
 
     if (!listaParaAtualizar) {
@@ -439,7 +439,7 @@ export default function CurrentListScreen() {
                   quantidade: novaQuantidade,
                   valorTotalItem: (i.valorUnitario || 0) * novaQuantidade,
                   // Opcional: atualizar 'detalhes' se o novo item escaneado tiver infos mais recentes
-                  // detalhes: detalhes || i.detalhes,
+                  // detalhes: detalhes || i.detalhes, 
                 };
               }
               return i;

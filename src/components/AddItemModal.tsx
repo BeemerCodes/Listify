@@ -149,7 +149,7 @@ const AddItemModal: React.FC<AddItemModalProps> = ({
     if (isListaTarefas) {
       qtdFinal = 1; // Quantidade padrão para tarefas
     }
-
+    
     const listaAlvo = todasAsListas.find(l => l.id === listaId);
     if (!listaAlvo) {
         // Idealmente, notificar o usuário ou tratar esse erro, mas por ora apenas retorna.
