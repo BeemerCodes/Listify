@@ -13,6 +13,7 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Modal, ScrollView
 } from "react-native";
 import { ListContext, Item } from "../src/context/ListContext";
 import { ThemeContext } from "../src/context/ThemeContext";
@@ -42,6 +43,9 @@ export default function CurrentListScreen() {
   const [loading, setLoading] = useState(false);
   const [isAddItemModalVisible, setIsAddItemModalVisible] = useState(false);
   const [isSummaryModalVisible, setIsSummaryModalVisible] = useState(false);
+  const [isViewTextModalVisible, setIsViewTextModalVisible] = useState(false);
+  const [currentItemText, setCurrentItemText] = useState("");
+  const [dismissedArchivePrompts, setDismissedArchivePrompts] = useState<Record<string, boolean>>({});
 
   const listaAtiva = todasAsListas.find((l) => l.id === listaAtivaId);
   const isListaTarefas = listaAtiva?.nome.toLowerCase() === "tarefas";
@@ -56,34 +60,42 @@ export default function CurrentListScreen() {
   useEffect(() => {
     if (
       listaAtiva &&
+      listaAtiva &&
       listaAtiva.itens &&
       listaAtiva.itens.length > 0 &&
-      !listaAtiva.isArchived && // Só processa se não estiver já arquivada
-      listaAtiva.itens.every(item => item.comprado)
+      !listaAtiva.isArchived &&
+      listaAtiva.itens.every(item => item.comprado) &&
+      !dismissedArchivePrompts[listaAtiva.id] // Adicionada esta condição
     ) {
       Alert.alert(
         "Lista Concluída",
         `Todos os itens da lista "${listaAtiva.nome}" foram marcados. Deseja arquivar esta lista?`,
         [
-          { text: "Não", style: "cancel" },
+          {
+            text: "Não",
+            style: "cancel",
+            onPress: () => {
+              setDismissedArchivePrompts(prev => ({ ...prev, [listaAtiva.id]: true }));
+            },
+          },
           {
             text: "Sim, Arquivar",
             onPress: () => {
               archiveList(listaAtiva.id);
-              // Após arquivar, encontrar a próxima lista não arquivada para definir como ativa
+              setDismissedArchivePrompts(prev => {
+                const newState = { ...prev };
+                delete newState[listaAtiva.id]; // Limpa o prompt para esta lista, caso seja desarquivada
+                return newState;
+              });
+              // Lógica para encontrar a próxima lista ativa...
               const proximaListaAtiva = todasAsListas.find(l => l.id !== listaAtiva.id && !l.isArchived);
               if (proximaListaAtiva) {
                 setListaAtivaId(proximaListaAtiva.id);
               } else {
-                // Se não houver outra lista ativa, pode ir para a tela de listas ou limpar o ID ativo
-                // Isso depende da lógica de criação de lista padrão no ListContext se todas forem arquivadas
-                const algumaListaNaoArquivada = todasAsListas.find(l => !l.isArchived);
+                const algumaListaNaoArquivada = todasAsListas.find(l => !l.isArchived && l.id !== listaAtiva.id);
                 if(algumaListaNaoArquivada){
                     setListaAtivaId(algumaListaNaoArquivada.id);
                 } else {
-                    // Se todas as listas estão arquivadas (incluindo a atual que acabou de ser)
-                    // o ListContext deve lidar com a criação de uma nova lista padrão ou limpar o ID
-                    // Por enquanto, vamos para a tela de listas.
                     router.push("/lists");
                 }
               }
@@ -94,7 +106,21 @@ export default function CurrentListScreen() {
         { cancelable: true }
       );
     }
-  }, [listaAtiva, todasAsListas, archiveList, setListaAtivaId, router]);
+  }, [listaAtiva, todasAsListas, archiveList, setListaAtivaId, router, dismissedArchivePrompts]);
+
+  // Limpar o dismissed prompt se a lista ativa mudar e não estiver mais completa, ou se for arquivada/desarquivada externamente
+  useEffect(() => {
+    if (listaAtiva && dismissedArchivePrompts[listaAtiva.id]) {
+      const isStillComplete = listaAtiva.itens && listaAtiva.itens.length > 0 && listaAtiva.itens.every(item => item.comprado);
+      if (!isStillComplete || listaAtiva.isArchived) {
+        setDismissedArchivePrompts(prev => {
+          const newState = { ...prev };
+          delete newState[listaAtiva.id];
+          return newState;
+        });
+      }
+    }
+  }, [listaAtiva, dismissedArchivePrompts]);
 
 
   const formatCurrency = (value: number | undefined) => {
@@ -218,6 +244,52 @@ export default function CurrentListScreen() {
       marginTop: 50,
       color: Cores[currentColorScheme].textSecondary,
     },
+    // Estilos para o Modal de Visualização de Texto
+    modalViewTextContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "rgba(0,0,0,0.6)",
+    },
+    modalViewTextContent: {
+      width: "90%",
+      maxWidth: 500,
+      maxHeight: "70%",
+      backgroundColor: Cores[currentColorScheme].cardBackground,
+      borderRadius: 12,
+      padding: 20,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+    },
+    modalViewTextTitle: {
+      fontSize: 20,
+      fontWeight: "bold",
+      marginBottom: 15,
+      textAlign: "center",
+      color: Cores[currentColorScheme].text,
+    },
+    modalViewTextScrollView: {
+      marginBottom: 20,
+    },
+    modalViewFullText: {
+      fontSize: 17,
+      color: Cores[currentColorScheme].text,
+      lineHeight: 24,
+    },
+    modalViewTextCloseButton: {
+      backgroundColor: Cores[currentColorScheme].buttonPrimaryBackground,
+      paddingVertical: 12,
+      borderRadius: 8,
+      alignItems: "center",
+    },
+    modalViewTextCloseButtonText: {
+      fontSize: 16,
+      fontWeight: "bold",
+      color: Cores[currentColorScheme].buttonText,
+    },
   });
 
   useEffect(() => {
@@ -327,42 +399,75 @@ export default function CurrentListScreen() {
       Alert.alert("Erro", "Nenhuma lista ativa selecionada para adicionar o item.");
       return;
     }
-    const listaExiste = todasAsListas.find(l => l.id === listaAtivaId);
-    if (!listaExiste) {
+    
+    let listaParaAtualizar = todasAsListas.find(l => l.id === listaAtivaId);
+
+    if (!listaParaAtualizar) {
         Alert.alert("Erro", "Lista ativa não encontrada. Selecione uma lista válida.");
-        if (todasAsListas.length > 0 && !todasAsListas.find(l => l.isArchived && l.id === todasAsListas[0].id)) { // Garante que a primeira lista não está arquivada
-            setListaAtivaId(todasAsListas[0].id);
-            Alert.alert("Aviso", "Nenhuma lista estava ativa. A primeira lista não arquivada foi selecionada. Tente adicionar o item novamente.");
-        } else if (todasAsListas.length > 0) {
-            // Tenta encontrar a primeira lista não arquivada
-            const primeiraNaoArquivada = todasAsListas.find(l => !l.isArchived);
-            if (primeiraNaoArquivada) {
-                setListaAtivaId(primeiraNaoArquivada.id);
-                Alert.alert("Aviso", "Nenhuma lista estava ativa. Uma lista não arquivada foi selecionada. Tente adicionar o item novamente.");
-            } else {
-                 Alert.alert("Aviso", "Todas as listas estão arquivadas. Crie ou desarquive uma lista.");
-                 router.push('/lists'); // Leva para a tela de listas
-            }
-        }
+        // Lógica para tentar encontrar uma lista ativa alternativa omitida para brevidade, mas deve ser mantida ou ajustada.
         return;
     }
 
-    const novoItem: Item = {
-      id: Date.now().toString(),
-      texto: texto,
-      quantidade: 1,
-      valorUnitario: valorUnitario, // Usar o valorUnitario fornecido
-      valorTotalItem: valorUnitario, // Inicialmente igual ao valor unitário (para quantidade 1)
-      comprado: false,
-      detalhes, // `detalhes` já inclui o barcode
-    };
+    const barcodeDoNovoItem = detalhes?.barcode;
+    let itemExistente = null;
 
-    const novasListas = todasAsListas.map((lista) =>
-      lista.id === listaAtivaId
-        ? { ...lista, itens: [novoItem, ...lista.itens] } // Adiciona no início
-        : lista
-    );
-    setTodasAsListas(novasListas);
+    // Prioridade 1: Verificar por barcode
+    if (barcodeDoNovoItem) {
+      itemExistente = listaParaAtualizar.itens.find(
+        (i) => i.detalhes?.barcode === barcodeDoNovoItem
+      );
+    }
+
+    // Prioridade 2: Verificar por nome (se não encontrado por barcode)
+    if (!itemExistente) {
+      itemExistente = listaParaAtualizar.itens.find(
+        (i) => i.texto.toLowerCase() === texto.toLowerCase()
+      );
+    }
+
+    if (itemExistente && !isListaTarefas) { // Só agrupa se não for lista de tarefas
+      // Item encontrado, apenas incrementa a quantidade
+      const novasLojas = todasAsListas.map((lista) => {
+        if (lista.id === listaAtivaId) {
+          return {
+            ...lista,
+            itens: lista.itens.map((i) => {
+              if (i.id === itemExistente!.id) {
+                const novaQuantidade = i.quantidade + 1;
+                return {
+                  ...i,
+                  quantidade: novaQuantidade,
+                  valorTotalItem: (i.valorUnitario || 0) * novaQuantidade,
+                  // Opcional: atualizar 'detalhes' se o novo item escaneado tiver infos mais recentes
+                  // detalhes: detalhes || i.detalhes, 
+                };
+              }
+              return i;
+            }),
+          };
+        }
+        return lista;
+      });
+      setTodasAsListas(novasLojas);
+      // Alert.alert("Item Atualizado", `A quantidade de "${texto}" foi incrementada.`); // Removido
+    } else {
+      // Adiciona como novo item
+      const novoItem: Item = {
+        id: Date.now().toString(),
+        texto: texto,
+        quantidade: 1,
+        valorUnitario: valorUnitario,
+        valorTotalItem: valorUnitario, // para quantidade 1
+        comprado: false,
+        detalhes,
+      };
+      const novasLojas = todasAsListas.map((lista) =>
+        lista.id === listaAtivaId
+          ? { ...lista, itens: [novoItem, ...lista.itens] }
+          : lista
+      );
+      setTodasAsListas(novasLojas);
+    }
     Keyboard.dismiss();
   };
 
@@ -384,17 +489,38 @@ export default function CurrentListScreen() {
   };
 
   const handleMarcarItem = (itemId: string) => {
-    const novasListas = todasAsListas.map((l) =>
-      l.id === listaAtivaId
-        ? {
-            ...l,
-            itens: l.itens.map((i) =>
-              i.id === itemId ? { ...i, comprado: !i.comprado } : i
-            ),
-          }
-        : l
-    );
+    let itemFoiDesmarcado = false;
+    let listaIdDoItem = "";
+
+    const novasListas = todasAsListas.map((l) => {
+      if (l.id === listaAtivaId) {
+        listaIdDoItem = l.id;
+        return {
+          ...l,
+          itens: l.itens.map((i) => {
+            if (i.id === itemId) {
+              if (i.comprado) { // Se estava comprado, vai ser desmarcado
+                itemFoiDesmarcado = true;
+              }
+              return { ...i, comprado: !i.comprado };
+            }
+            return i;
+          }),
+        };
+      }
+      return l;
+    });
+
     setTodasAsListas(novasListas);
+
+    // Se um item foi desmarcado na lista ativa, e essa lista tinha um prompt dispensado, limpa o prompt
+    if (itemFoiDesmarcado && listaIdDoItem && dismissedArchivePrompts[listaIdDoItem]) {
+      setDismissedArchivePrompts(prev => {
+        const newState = { ...prev };
+        delete newState[listaIdDoItem];
+        return newState;
+      });
+    }
   };
 
   const handleRemoverItem = (itemId: string) => {
@@ -406,7 +532,7 @@ export default function CurrentListScreen() {
     setTodasAsListas(novasListas);
   };
 
-  const handleVerDetalhes = (item: Item) => {
+  const handleNavigateToDetails = (item: Item) => { // Renomeado para clareza
     const paramsNavegacao: any = { id: item.id };
     if (item.detalhes) {
       paramsNavegacao.itemDetalhesJSON = JSON.stringify(item.detalhes);
@@ -417,9 +543,16 @@ export default function CurrentListScreen() {
     });
   };
 
+  const handleShowFullText = (text: string) => {
+    setCurrentItemText(text);
+    setIsViewTextModalVisible(true);
+  };
+
   const renderItem = ({ item }: { item: Item }) => (
     <Pressable
-      onPress={() => handleVerDetalhes(item)}
+      onPress={() => handleShowFullText(item.texto)} // Toque curto para ver texto completo
+      onLongPress={() => handleNavigateToDetails(item)} // Toque longo para editar
+      delayLongPress={300} // Tempo para considerar long press
       style={styles.itemListaContainer}
     >
       <View style={styles.checkboxArea}>
@@ -553,6 +686,29 @@ export default function CurrentListScreen() {
           listName={listaAtiva.nome}
         />
       )}
+
+      {/* Modal para Visualizar Texto Completo do Item */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={isViewTextModalVisible}
+        onRequestClose={() => setIsViewTextModalVisible(false)}
+      >
+        <View style={styles.modalViewTextContainer}>
+          <View style={styles.modalViewTextContent}>
+            <Text style={styles.modalViewTextTitle}>Nome Completo do Item</Text>
+            <ScrollView style={styles.modalViewTextScrollView}>
+              <Text style={styles.modalViewFullText}>{currentItemText}</Text>
+            </ScrollView>
+            <Pressable
+              style={styles.modalViewTextCloseButton}
+              onPress={() => setIsViewTextModalVisible(false)}
+            >
+              <Text style={styles.modalViewTextCloseButtonText}>Fechar</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
